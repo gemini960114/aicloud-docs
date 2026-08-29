@@ -1,0 +1,179 @@
+# 第 6 章：Cloudflare Tunnel 與正式部署
+
+Antigravity Ports 解決的是「學員如何查看遠端開發服務」；Cloudflare Tunnel 解決的是「外部使用者如何透過固定 HTTPS 網域持續使用正式服務」。
+
+## 1. 開發預覽與正式發布
+
+| 項目 | Antigravity Ports | Cloudflare Tunnel |
+| :--- | :--- | :--- |
+| 目的 | 個人開發、除錯與課堂驗證 | 正式或受控的外部服務 |
+| 使用者 | 目前的開發者 | 經授權的外部使用者／應用 |
+| 生命週期 | 依賴 Remote SSH／IDE 工作階段 | 由系統服務持續運行 |
+| 網址 | 本機預覽位址 | 固定 HTTPS 網域 |
+| 驗證 | 開發工具工作階段 | Cloudflare Access＋應用程式授權 |
+
+不要把開發伺服器或 Antigravity Port 預覽當成正式部署。
+
+## 2. 正式服務架構
+
+```text
+[外部使用者]
+       │ HTTPS
+       ▼
+[Cloudflare Access]
+       │ 身分驗證／存取政策
+       ▼
+[Cloudflare Tunnel]
+       │
+       ▼
+[Next.js Production :3000]
+       │ Chatbot Virtual Key
+       ▼
+[LiteLLM :4000（內部）]
+       │ Provider Keys
+       ├── 國網模型 API
+       └── 其他授權模型 API
+```
+
+預設只公開 Chatbot。LiteLLM、PostgreSQL、管理 UI 與上游 Key 都留在內部。
+
+## 3. Production Build
+
+正式環境不得使用 `npm run dev`。請 Antigravity 先規劃：
+
+> 請檢查 Next.js Chatbot 與 LiteLLM Gateway，提出正式部署計畫。Next.js 必須使用 production build，LiteLLM 與 PostgreSQL 不得直接公開，Secret 不可寫入映像或 Git。請比較 systemd 與 Docker Compose，選擇本專案較簡單且可重現的方式，列出健康檢查、重啟、日誌、備份與回復步驟，暫時不要執行。
+
+本課程建議用 Docker Compose 管理應用服務，理由是 LiteLLM 與 PostgreSQL 本來就適合容器化，也可避免 NVM 安裝的 Node.js 路徑在 systemd 中不一致。
+
+### 容器網路的重要差異
+
+在 VM 主機上開發時，Next.js 可以呼叫 `http://127.0.0.1:4000`。但 Next.js 與 LiteLLM 都進入 Compose 後，容器內的 `localhost` 只代表該容器自己，應改用 Compose service name，例如 `http://litellm:4000`。
+
+對主機發布時可限制：
+
+```text
+127.0.0.1:3000 → Next.js
+127.0.0.1:4000 → LiteLLM（若維運需要）
+PostgreSQL         不發布主機 Port
+```
+
+## 4. 部署前驗收
+
+先在 VM 內完成：
+
+- Next.js Production Build 成功
+- 容器健康檢查成功
+- VM 重新啟動後服務自動恢復
+- Next.js 能從容器網路呼叫 LiteLLM
+- PostgreSQL 資料持久化
+- Chatbot 使用 Virtual Key，不是 Master Key
+- 服務只監聽必要的 localhost Port
+- 日誌不含 Secret 或完整敏感 Prompt
+
+可以先透過 Antigravity Ports 預覽 3000，確認 Production 版本無誤，再設定 Cloudflare。
+
+## 5. 建立具名 Cloudflare Tunnel
+
+在 Cloudflare Zero Trust 建立具名 Tunnel，依後台顯示的當期指令安裝 `cloudflared` Connector。不要把 Tunnel Token 寫進教材、Shell History、Git 或截圖。
+
+Public Hostname 建議：
+
+| 欄位 | 值 |
+| :--- | :--- |
+| Hostname | `chat.<你的網域>` |
+| Service | `http://127.0.0.1:3000` |
+| 對外協定 | HTTPS |
+
+Cloudflare Tunnel 由 VM 主動連出，因此通常不需要開放晶創雲 80、443 或 3000 Ingress；但 Egress、DNS 與專案網路政策仍需允許 Connector 連線。
+
+## 6. 先設定 Access，再邀請使用者
+
+建立 Access Application 與最小允許政策，例如：
+
+- 只允許指定組織網域
+- 或只允許課程學員 Email
+- 設定合理的 Session Duration
+- 管理者與一般使用者分離
+- 拒絕規則優先於寬鬆允許規則
+
+Cloudflare Access 保護「誰能進入 Chatbot」；Next.js 與 LiteLLM 仍需各自的 Session、Virtual Key、Rate Limit 與日誌政策。
+
+## 7. 不建議公開 LiteLLM API
+
+主課程架構中，外部使用者只需要 Chatbot，不需直接呼叫 LiteLLM。
+
+若未來確實要提供 `api.<你的網域>`，應視為另一項進階服務，至少加入：
+
+- 獨立 Cloudflare Access Service Token 或其他機器驗證
+- 每個應用程式獨立 Virtual Key
+- 模型白名單
+- RPM／TPM／預算
+- Request size 與 Timeout 限制
+- Key 輪替與撤銷
+- 管理 API／UI 與推論 API 分離
+- 事件監控與異常用量告警
+
+不允許把 LiteLLM Master Key 提供給外部應用。
+
+## 8. 請 Antigravity 協助部署與驗證
+
+> 請依已確認的正式部署計畫執行。每次只變更一個服務，先備份可回復的設定並顯示不含 Secret 的差異。完成後驗證 Compose 狀態、健康檢查、localhost 存取、Cloudflare Tunnel、Access 未登入阻擋、登入後 Chatbot 串流，以及 VM 重啟後自動恢復。不得輸出 Tunnel Token、API Key、Cookie 或資料庫密碼。
+
+## 9. 故障定位順序
+
+```text
+瀏覽器
+  ↓
+Cloudflare Access
+  ↓
+Tunnel／cloudflared
+  ↓
+Next.js
+  ↓
+LiteLLM
+  ↓
+上游 Provider
+```
+
+每次只確認相鄰兩層：
+
+1. VM 內能否直接開啟 Next.js？
+2. Next.js 能否呼叫 LiteLLM？
+3. LiteLLM 能否呼叫指定上游？
+4. Tunnel 是否連線？
+5. Access 是否允許正確身分？
+6. 公開網域是否能完成串流？
+
+不要一遇到錯誤就刪除整個部署或開放所有 Port。
+
+## 10. 上線後與課後清理
+
+上線後至少檢查：
+
+- Cloudflare 與應用程式存取紀錄
+- LiteLLM 錯誤率、延遲及使用量
+- 上游費用與配額
+- 磁碟空間、容器狀態與資料庫備份
+- 金鑰到期與映像更新
+
+課程結束若不再提供服務：
+
+1. 撤銷 Chatbot Virtual Key。
+2. 停用 Cloudflare Public Hostname 與 Access Application。
+3. 停止並移除不再使用的容器。
+4. 備份後刪除不需要的磁碟與 VM。
+5. 檢查晶創雲是否仍有計費資源。
+6. 保存不含 Secret 的架構、設定範本與學習紀錄。
+
+## 11. 全課程完成條件
+
+- [ ] Antigravity Ports 可做私人開發預覽
+- [ ] Next.js 使用 Production Build
+- [ ] LiteLLM 與 PostgreSQL 未直接公開
+- [ ] Cloudflare Tunnel 只指向必要服務
+- [ ] Cloudflare Access 已驗證未登入與已登入情境
+- [ ] VM 重啟後服務自動恢復
+- [ ] Chatbot 的串流、限流及錯誤處理正常
+- [ ] 已完成金鑰撤銷與資源清理演練
+
+至此，學員完成的是一套可延伸的 AI 應用基礎平台。未來可在同一個 LiteLLM Gateway 上增加 RAG、批次任務或獨立的進階 Agent 課程，而不必重新處理所有供應商金鑰與路由。

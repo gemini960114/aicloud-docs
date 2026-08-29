@@ -1,11 +1,10 @@
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
-  title: "晶創雲 AI Agent 實戰手冊",
-  description: "國研院晶創雲 (AI-CLOUD) 自研 AI Agent Runtime 全端系統建置教學",
+  title: "晶創雲 AI 應用實戰手冊",
+  description: "使用 Antigravity、LiteLLM、Next.js 與 Cloudflare 建立晶創雲多模型 AI 應用",
   base: '/aicloud-docs/',
   themeConfig: {
-    logo: '/logo.svg',
     nav: [
       { text: '首頁', link: '/' },
       { text: '課程大綱', link: '/guide/00_course_syllabus' },
@@ -16,12 +15,12 @@ export default defineConfig({
         text: '📚 課程指南',
         items: [
           { text: '📌 課程總綱與學習地圖', link: '/guide/00_course_syllabus' },
-          { text: '☁️ 第 01 章：晶創雲基礎設施與 VM 建立', link: '/guide/01_aicloud_infrastructure_setup' },
-          { text: '🤖 第 02 章：遠端連線與 AI Agentic IDE 賦能', link: '/guide/02_ssh_proxyjump_and_dev_env' },
-          { text: '🧠 第 03 章：大腦串接：Taiwan AI 雲端模型', link: '/guide/03_taiwan_ai_api_integration' },
-          { text: '⚙️ 第 04 章：核心實戰：自研 AI Agent Runtime', link: '/guide/04_ai_agent_runtime_engine' },
-          { text: '⚛️ 第 05 章：前端展現：React 現代觀測台', link: '/guide/05_react_agent_dashboard' },
-          { text: '🔒 第 06 章：穿透發布與 24/7 維運 (方案 A)', link: '/guide/06_cloudflare_tunnel_and_systemd' }
+          { text: '☁️ 第 1 章：晶創雲 VM 建立', link: '/guide/01_aicloud_infrastructure_setup' },
+          { text: '🛰️ 第 2 章：Antigravity Remote SSH 與 Ports', link: '/guide/02_ssh_proxyjump_and_dev_env' },
+          { text: '🔀 第 3 章：LiteLLM 多模型 Gateway', link: '/guide/03_litellm_gateway' },
+          { text: '🛡️ 第 4 章：API 權限與服務治理', link: '/guide/04_litellm_api_governance' },
+          { text: '💬 第 5 章：AI 協作建立 Next.js Chatbot', link: '/guide/05_nextjs_chatbot_with_ai' },
+          { text: '🔒 第 6 章：Cloudflare 正式部署', link: '/guide/06_cloudflare_deployment' }
         ]
       }
     ],
@@ -32,8 +31,8 @@ export default defineConfig({
       { icon: 'github', link: 'https://github.com/gemini960114/aicloud-docs' }
     ],
     footer: {
-      message: 'Released under the MIT License.',
-      copyright: 'Copyright © 2026 BioBank & NCHC AI-CLOUD'
+      message: '課程中的平台畫面、版本與價格請以各服務官方資訊為準。',
+      copyright: 'Copyright © 2026 AI-Cloud Course'
     }
   }
 })

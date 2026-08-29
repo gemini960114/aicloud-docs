@@ -1,0 +1,154 @@
+# 第 3 章：LiteLLM 多模型 API Gateway
+
+本章將國網及其他已取得授權的模型 API 放在同一個 Gateway 後方。應用程式只需要記住一個 Base URL、一組應用程式金鑰及一組課程定義的模型別名。
+
+LiteLLM 支援許多供應商，但各家的模型、參數、串流與錯誤行為不一定完全相同。本章採取「先驗證一個上游，再逐一增加」的方式。
+
+## 1. 先理解 Gateway 的角色
+
+```text
+[Chatbot 或測試程式]
+        │ OpenAI-compatible request
+        ▼
+[LiteLLM Proxy :4000]
+        ├── model: nchc-chat    → 國網模型 API
+        └── model: backup-chat  → 其他授權 API
+```
+
+LiteLLM 可以協助統一：
+
+- 呼叫 Endpoint 與驗證方式
+- 應用程式看到的模型別名
+- 串流回應格式
+- Retry、Timeout、Fallback 與路由
+- Virtual Key、流量限制及使用紀錄
+
+它不會自動保證不同模型的答案品質、功能或資料政策相同，這些仍需由管理者驗證。
+
+## 2. 蒐集上游 API 資訊
+
+每一個上游至少需要：
+
+| 欄位 | 說明 |
+| :--- | :--- |
+| Provider／協定 | LiteLLM 原生 Provider，或 OpenAI-compatible Endpoint |
+| Base URL | 上游 API 的服務位址 |
+| Model ID | 上游實際接受的模型名稱 |
+| API Key | 只存於伺服器端環境變數 |
+| 功能 | Chat、Streaming、Embedding、Tool Calling 等 |
+| 限制 | RPM、TPM、Context、資料政策與費率 |
+
+不要從舊教材複製 Base URL 或模型名稱。請使用帳號後台、講師提供資料及供應商官方文件確認當期資訊。
+
+## 3. 先直接測試國網 API
+
+在加入 LiteLLM 前，先用供應商文件提供的方法直接測試：
+
+- DNS 與 TLS 可連線
+- API Key 有效
+- Model ID 正確
+- 非串流 Chat 可回覆
+- 串流 Chat 可正常結束
+- 錯誤時會回傳可辨識的 HTTP 狀態
+
+建議請 Antigravity 協助，但不要把 Key 放進提示詞：
+
+> 請先閱讀我提供的國網 API 文件與目前專案中的 .env.example，提出一個不顯示、不記錄 API Key 的連線測試計畫。測試需涵蓋非串流、串流、錯誤模型名稱與未授權請求。先列出預期結果，不要執行。
+
+若直接呼叫尚未成功，不要急著加入 LiteLLM，否則會同時排查兩層問題。
+
+## 4. 建立 LiteLLM 專案
+
+建議目錄：
+
+```text
+~/aicloud-course/gateway/
+├── compose.yaml
+├── config.yaml
+├── .env
+├── .env.example
+└── README.md
+```
+
+`.env` 保存真正的 Secret；`config.yaml` 只引用環境變數。
+
+基本概念如下，實際 Provider 前綴、參數與映像版本請依 [LiteLLM 官方文件](https://docs.litellm.ai/)及國網 API 相容性測試調整：
+
+```yaml
+model_list:
+  - model_name: nchc-chat
+    litellm_params:
+      model: openai/<UPSTREAM_MODEL_ID>
+      api_base: os.environ/NCHC_API_BASE
+      api_key: os.environ/NCHC_API_KEY
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+```
+
+安全要求：
+
+- `LITELLM_MASTER_KEY` 使用高強度隨機值，不使用教材範例。
+- 上游 Key 與 Master Key 都不寫在 YAML、README 或 Git。
+- LiteLLM 初期只監聽 `127.0.0.1:4000`。
+- 不使用浮動的 `latest` 容器標籤作正式部署；鎖定課程驗證版本。
+
+## 5. 請 Antigravity 協助部署
+
+第一個提示詞：
+
+> 請檢查 ~/aicloud-course/gateway，根據 LiteLLM 官方文件規劃 Docker Compose 部署。LiteLLM 只能監聽 127.0.0.1:4000，config.yaml 只能引用環境變數，真正金鑰放在不納入 Git 的 .env。請先提出檔案清單、映像版本、健康檢查、啟停與驗證方式，不要建立檔案。
+
+審閱後再執行：
+
+> 依照已確認的計畫逐步建立 Gateway。每建立一個檔案先顯示不含 Secret 的差異；啟動後檢查容器狀態與健康端點。輸出日誌時必須遮蔽 Authorization、Cookie、API Key 與完整 Prompt。
+
+## 6. 驗證統一 API
+
+至少完成以下測試：
+
+1. 使用 Master Key 呼叫 `nchc-chat` 成功。
+2. 錯誤 Key 回傳 401／403，而不是進入上游。
+3. 不存在的模型別名回傳明確錯誤。
+4. Streaming 能逐段傳回並正常結束。
+5. LiteLLM 重新啟動後設定仍存在。
+6. 上游 API 暫時失敗時，能在日誌中定位是 Gateway 或 Provider 問題。
+
+開發階段如需查看 LiteLLM UI 或 API 文件，可透過 Antigravity Ports 暫時預覽 4000，不要在晶創雲開放公網 Ingress。
+
+## 7. 加入第二個授權供應商
+
+第一個上游通過全部測試後，再加入第二個供應商。為不同用途建立穩定別名，例如：
+
+- `nchc-chat`
+- `fast-chat`
+- `quality-chat`
+- `embedding`
+
+不要直接把供應商當期的完整 Model ID 散布在所有應用程式。模型別名讓管理者可以在 Gateway 調整後端，而不必同步修改每一個 Chatbot。
+
+新增後再次測試：
+
+- 相同輸入在不同模型是否可用
+- 是否都支援 Streaming
+- 是否接受相同參數
+- Timeout 與錯誤格式
+- Token／費率資料是否可正確記錄
+- Prompt 是否允許傳送至該供應商
+
+## 8. OpenAI-compatible 的範圍
+
+本課程主要使用 Chat Completions 風格的 `messages` 與串流回應，因為這通常是第三方 Gateway 的共同相容面。OpenAI 官方 API 本身仍持續演進；「OpenAI-compatible」只表示特定介面形狀相容，不代表所有 OpenAI 功能或模型行為皆相同。
+
+可參考[OpenAI Chat Completions API Reference](https://developers.openai.com/api/reference/resources/chat/subresources/completions)，並以 LiteLLM 與實際上游文件確認支援範圍。
+
+## 9. 本章完成條件
+
+- [ ] 國網 API 在 LiteLLM 之外直接測試成功
+- [ ] LiteLLM 只監聽遠端 localhost
+- [ ] `.env` 未加入 Git
+- [ ] `nchc-chat` 非串流與串流測試成功
+- [ ] 已加入並驗證至少一個其他授權模型，或記錄暫不加入的原因
+- [ ] 學員能說明 Base URL、上游 Key、Master Key 與模型別名的差異
+
+下一章將進一步設定 [API 金鑰與服務治理](/guide/04_litellm_api_governance)。

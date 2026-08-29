@@ -2,7 +2,7 @@
   "name": "aicloud-docs",
   "version": "1.0.0",
   "type": "module",
-  "description": "國研院晶創雲 (AI-CLOUD) 實戰與自研 AI Agent Runtime 教學手冊",
+  "description": "晶創雲 Antigravity、LiteLLM Gateway、Next.js Chatbot 與 Cloudflare 部署教學手冊",
   "scripts": {
     "docs:dev": "vitepress dev docs --host",
     "docs:build": "vitepress build docs",
