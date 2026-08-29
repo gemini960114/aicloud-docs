@@ -49,13 +49,15 @@ Antigravity Ports 解決的是「學員如何查看遠端開發服務」；Cloud
 
 在 VM 主機上開發時，Next.js 可以呼叫 `http://127.0.0.1:4000`。但 Next.js 與 LiteLLM 都進入 Compose 後，容器內的 `localhost` 只代表該容器自己，應改用 Compose service name，例如 `http://litellm:4000`。
 
-對主機發布時可限制：
+本課程的 Compose 部署應明確限制主機 Port 綁定；驗收設定等價於：
 
 ```text
 127.0.0.1:3000 → Next.js
 127.0.0.1:4000 → LiteLLM（若維運需要）
 PostgreSQL         不發布主機 Port
 ```
+
+例如 Next.js 的 Compose `ports` 應綁定 `127.0.0.1:3000:3000`，讓主機上的 `cloudflared` 可以連線，但外部網路不能直接存取 3000。若 `cloudflared` 也放入同一個 Compose 網路，則應改以 Next.js service name 連線，且可不發布主機 Port；兩種拓撲擇一並實測，不要混用。
 
 ## 4. 部署前驗收
 
@@ -192,7 +194,7 @@ LiteLLM
 - Cloudflare 與應用程式存取紀錄
 - LiteLLM 錯誤率、延遲及使用量
 - 上游費用與配額
-- 磁碟空間、容器狀態與資料庫備份
+- 磁碟空間、容器狀態與 LiteLLM PostgreSQL 治理資料備份
 - 金鑰到期與映像更新
 
 課程結束若不再提供服務：

@@ -34,7 +34,7 @@ features:
     details: 向不同團隊與會議系統發放獨立 Virtual Key，分別限制 STT／LLM 模型、RPM、TPM、期限與預算。
     link: /guide/04_litellm_api_governance
     linkText: 設計存取治理
-  - icon: 💬
+  - icon: 🎙️
     title: 第 5 章｜AI 會議轉錄與紀錄
     details: 以分階段 Prompt 建立錄音檔上傳、STT、逐字稿修訂與串流會議紀錄，再安全交付到 GitHub。
     link: /guide/05_ai_meeting_transcription

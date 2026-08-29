@@ -96,10 +96,10 @@ Next.js 只取得最小權限 LiteLLM Virtual Key；TAIWAN AI RAP API入口金�
 | 主體／Key | 允許的模型別名 | 教學限制 | 用途 |
 | :--- | :--- | :--- | :--- |
 | `team-a-dev` | `nchc-chat` | 10 RPM、保守 TPM、短期到期 | 驗證單一國網模型權限 |
-| `team-b-eval` | `nchc-chat`、`claude-chat` | 20 RPM、獨立 TPM 與期限 | 比較兩個已授權上游 |
+| `team-b-eval` | `nchc-chat`；選修時再加入其他已授權別名 | 20 RPM、獨立 TPM 與期限 | 驗證同一 Gateway 下不同團隊仍有獨立限額 |
 | `meeting-app-prod` | `meeting-stt`、`meeting-llm` | 正式環境 RPM／TPM、平行請求數與可用的週期預算 | 第 5、6 章的會議轉錄系統 |
 
-若沒有 Anthropic Claude 授權，`team-b-eval` 可改用另一個已授權上游；不可為完成表格而使用未授權憑證。
+Team B 不依賴第二家供應商也能完成多租戶與獨立限額練習。只有選修多供應商比較、且確實持有授權時，才為 Team B 增加 `openai-chat`、`claude-chat` 或其他已驗證別名；不可為完成表格而使用未授權憑證。
 
 ### 操作順序
 
@@ -120,7 +120,7 @@ LiteLLM 可在 Team、使用者、Key 及個別模型層級設定預算或流量
 | 測試 | 預期結果 |
 | :--- | :--- |
 | Team A Key＋`nchc-chat` | 成功，且用量歸屬 Team A |
-| Team A Key＋`claude-chat` | 拒絕，不呼叫上游 |
+| Team A Key＋未允許的模型別名 | 拒絕，不呼叫上游 |
 | Team B Key＋已允許模型 | 成功，且用量歸屬 Team B |
 | 會議系統 Key＋`meeting-stt`／`meeting-llm` | 成功，不暴露實際上游憑證 |
 | 錯誤或撤銷 Key | 401／403 |
@@ -168,6 +168,7 @@ Fallback 不等於永遠重試。先依失敗類型決定行為：
 - Authorization Header
 - API Key、Cookie、Session
 - 完整 Prompt 與模型回覆
+- 原始錄音、逐字稿與會議紀錄
 - 個人資料、機敏研究資料或未公開程式碼
 
 若教學需要觀察 Prompt，使用無敏感資料的測試內容，並說明保存期限與可存取人員。

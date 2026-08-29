@@ -83,7 +83,7 @@ pwd
 uname -a
 ```
 
-> Antigravity 的產品介面可能更新。若名稱或位置不同，請以當期 IDE 畫面與[官方 Antigravity 文件](https://www.antigravity.google/docs/ide/overview/)為準。
+> Antigravity 的產品介面可能更新，官方總覽也不一定逐項記載 Remote SSH 與 Ports 的操作位置。講師應在開課前以課堂指定版本實測「SSH 連線、開啟遠端資料夾、終端機與 Ports 預覽」完整流程；若該版本或安裝政策無法使用，改以 VS Code Remote SSH 與 Ports 作為備援。介面名稱仍以[官方 Antigravity 文件](https://www.antigravity.google/docs/ide/overview/)與當期畫面為準。
 
 ### 驗收點 A
 

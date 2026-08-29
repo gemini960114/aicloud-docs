@@ -67,7 +67,7 @@
 
 > 背景與現況：我已在 TAIWAN AI RAP Lightweight Portal 選擇正確計畫，API Base URL、API入口金鑰與 Model ID 會由我透過遠端終端機設定為環境變數。
 > 目標：建立只監聽 127.0.0.1:4000 的 LiteLLM Gateway，將 RAP 模型映射成 `nchc-chat`、`meeting-stt` 與 `meeting-llm`。
-> 技術限制：先依 TAIWAN AI RAP API Guide 測試 `GET /models`，分別直接測試 Audio Transcriptions、Chat Completions 非串流與 SSE，再驗證相同請求可透過 LiteLLM 模型別名完成；LiteLLM 使用鎖定版本的容器與只引用環境變數的設定檔。
+> 技術限制：先依 TAIWAN AI RAP API Guide 測試 `GET /models`，分別直接測試 Audio Transcriptions、Chat Completions 非串流與 SSE，再驗證相同請求可透過 LiteLLM 模型別名完成；`meeting-stt` 依 LiteLLM 官方文件標示 `model_info.mode: audio_transcription`，並實測 RAP 的 Provider 前綴、Base URL、multipart 轉送與回應格式；LiteLLM 使用鎖定版本的容器與只引用環境變數的設定檔。
 > 安全限制：不得讀取、輸出、記錄或提交任何金鑰、錄音或逐字稿；不得在晶創雲開放 4000。
 > 驗收：STT 與 LLM 正確請求成功，錯誤 Key、錯誤模型、無權限模型與上游中斷均有明確結果，重啟後設定仍存在。
 > 請先列出資料流、檔案清單、版本路徑風險、測試矩陣及回復方法，不要建立檔案。

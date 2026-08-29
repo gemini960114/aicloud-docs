@@ -34,7 +34,7 @@
 5. 向不同團隊與應用程式發放獨立 Virtual Key，分別管理模型權限、流量、期限、預算與使用紀錄。
 6. 以分階段 Prompt 引導 AI 建立錄音檔轉錄與會議紀錄系統，而不是單純複製完整程式碼。
 7. 以 Prompt 完成 GitHub CLI 網頁授權、Secret 檢查與受控的版本交付。
-8. 使用 Cloudflare Tunnel 將正式服務安全發布到網際網路。
+8. 使用 Cloudflare Access 與 Tunnel，將正式服務以受控身分入口安全發布到網際網路。
 
 ## 課程章節
 
@@ -75,7 +75,10 @@
 [外部使用者]
       │ HTTPS
       ▼
-[Cloudflare Access / Tunnel]
+[Cloudflare Access]
+      │ 身分驗證與存取政策
+      ▼
+[Cloudflare Tunnel]
       │
       ▼
 [Next.js 會議系統 :3000]
@@ -105,7 +108,7 @@
 - TAIWAN AI RAP API入口金鑰依計畫個別管理；不要與 Portal 的使用者金鑰或 LiteLLM Virtual Key 混用。
 - 瀏覽器只呼叫會議系統的同源後端，不直接取得 LiteLLM 或上游供應商金鑰。
 - 開發服務透過 Antigravity Ports 預覽，不開放晶創雲的 3000、4000 等連接埠。
-- Cloudflare Tunnel 是網路入口，不取代登入、API 授權、流量限制與稽核。
+- Cloudflare Tunnel 只負責連線與發布，不提供使用者身分驗證；本課程由 Cloudflare Access 保護使用者入口，LiteLLM Virtual Key、模型白名單與限流則保護模型服務。
 - 課程結束後停止或刪除不再使用的計費資源，並撤銷臨時金鑰。
 
 TAIWAN AI RAP 的申請畫面、模型與參數可能更新，開課時請以 [TAIWAN AI RAP API Guide](https://rap.genai.nchc.org.tw/doc?section=api-guide) 與 Lightweight Portal 當下資訊為準。

@@ -13,9 +13,10 @@ LiteLLM 支援許多供應商，但各家的模型、參數、串流與錯誤行
 [OpenAI API（選配）] ──────────┼──▶ [LiteLLM Proxy :4000]
 [Anthropic Claude API（選配）] ┘              │
                                               ├── nchc-chat
-                                              ├── openai-chat
-                                              ├── claude-chat
-                                              └── general-chat（路由別名）
+                                              ├── meeting-stt（語音轉錄）
+                                              ├── meeting-llm（會議整理）
+                                              ├── openai-chat／claude-chat（選配）
+                                              └── general-chat（選配路由別名）
                                                        │
                                                        ▼
                                       [受控 Virtual Key 的團隊與應用程式]
@@ -166,26 +167,9 @@ general_settings:
 
 > 依照已確認的計畫逐步建立 Gateway。每建立一個檔案先顯示不含 Secret 的差異；啟動後檢查容器狀態與健康端點。輸出日誌時必須遮蔽 Authorization、Cookie、API Key 與完整 Prompt。
 
-## 8. 驗證統一 API
+## 8. 建立會議應用必要別名並驗證統一 API
 
-至少完成以下測試：
-
-1. 使用 Master Key 呼叫 `nchc-chat` 成功。
-2. 使用無敏感資訊的短音檔呼叫 `meeting-stt` 成功。
-3. `meeting-llm` 的非串流與 SSE 呼叫成功。
-4. 錯誤 Key 回傳 401／403，而不是進入上游。
-5. 不存在的模型別名回傳明確錯誤。
-6. Streaming 能逐段傳回並正常結束。
-7. LiteLLM 重新啟動後設定仍存在。
-8. 上游 API 暫時失敗時，能在日誌中定位是 Gateway 或 Provider 問題。
-
-開發階段如需查看 LiteLLM UI 或 API 文件，可透過 Antigravity Ports 暫時預覽 4000，不要在晶創雲開放公網 Ingress。
-
-## 9. 建立多上游模型清單
-
-第一個上游通過全部測試後，再依實際授權加入 OpenAI、Anthropic Claude 或其他供應商。課堂不要求每位學員都同時持有三家的帳號；沒有額外授權時，以 TAIWAN AI RAP 加上一個講師核准的測試上游即可完成核心練習。
-
-以下設定只呈現組合方式，`<...>` 必須換成帳號後台當期可用的 Model ID；真正金鑰仍放在 `.env`：
+先在已驗證的 RAP 上游加入第 5 章需要的兩個固定別名。以下只呈現設定形狀；`<...>` 必須換成該計畫 `GET /models` 實際回傳且已直接測試成功的 Model ID：
 
 ```yaml
 model_list:
@@ -200,13 +184,39 @@ model_list:
       model: openai/<RAP_STT_MODEL_ID>
       api_base: os.environ/NCHC_API_BASE
       api_key: os.environ/NCHC_API_KEY
+    model_info:
+      mode: audio_transcription
 
   - model_name: meeting-llm
     litellm_params:
       model: openai/<RAP_LLM_MODEL_ID>
       api_base: os.environ/NCHC_API_BASE
       api_key: os.environ/NCHC_API_KEY
+```
 
+[LiteLLM 官方 Audio Transcriptions 文件](https://docs.litellm.ai/docs/audio_transcription)使用 `model_info.mode: audio_transcription` 標示音訊轉錄模型。RAP 雖提供 OpenAI-compatible API，仍需以課程鎖定的 LiteLLM 版本實測 Provider 前綴、`api_base`、multipart 轉送與回應格式；設定檔可載入不等於音訊代理已相容。
+
+至少完成以下測試：
+
+1. 使用 Master Key 呼叫 `nchc-chat` 成功。
+2. 使用無敏感資訊的短音檔呼叫 `meeting-stt` 成功。
+3. `meeting-llm` 的非串流與 SSE 呼叫成功。
+4. 錯誤 Key 回傳 401／403，而不是進入上游。
+5. 不存在的模型別名回傳明確錯誤。
+6. Streaming 能逐段傳回並正常結束。
+7. LiteLLM 重新啟動後設定仍存在。
+8. 上游 API 暫時失敗時，能在日誌中定位是 Gateway 或 Provider 問題。
+
+開發階段如需查看 LiteLLM UI 或 API 文件，可透過 Antigravity Ports 暫時預覽 4000，不要在晶創雲開放公網 Ingress。
+
+## 9. 選配：加入其他授權上游
+
+TAIWAN AI RAP 與三個必要別名通過全部測試後，才依實際授權加入 OpenAI、Anthropic Claude 或其他供應商。課堂不要求每位學員持有第二家供應商帳號；沒有額外授權時，完成 RAP、Virtual Key 與會議系統流程即可完成核心練習，多供應商比較改為選修。
+
+以下設定接續附加到既有 `model_list`，只呈現組合方式；`<...>` 必須換成帳號後台當期可用的 Model ID，真正金鑰仍放在 `.env`：
+
+```yaml
+model_list:
   - model_name: openai-chat
     litellm_params:
       model: openai/<OPENAI_MODEL_ID>
@@ -243,7 +253,7 @@ model_list:
 
 建議提示詞：
 
-> 請根據 LiteLLM 官方 Provider 文件與目前 `.env.example`，規劃把已取得授權的 TAIWAN AI RAP、OpenAI 與 Anthropic Claude 上游加入同一個 Gateway。請包含第 5 章需要的 `meeting-stt`、`meeting-llm`，以及用於多供應商驗證的 `nchc-chat`、`openai-chat`、`claude-chat`；真正 Model ID 與金鑰只從環境變數取得。先列出各上游的必要欄位、相容性測試、資料政策與失敗停損點，不要讀取 Secret，也不要立即修改檔案。
+> 請根據 LiteLLM 官方 Provider 文件與目前 `.env.example`，規劃把我已取得授權的其他上游加入既有 Gateway。不得假設我一定持有 OpenAI 或 Anthropic Claude 帳號；只處理我明確確認可用的 Provider。保留第 5 章需要的 `meeting-stt`、`meeting-llm` 與 `nchc-chat`，為新增上游建立獨立別名；真正 Model ID 與金鑰只從環境變數取得。先列出必要欄位、相容性測試、資料政策與失敗停損點，不要讀取 Secret，也不要立即修改檔案。
 
 ## 10. RAP 非聊天模型要獨立驗證
 
@@ -273,7 +283,7 @@ RAP 官方特殊模型文件提供以下例子：
 - [ ] TAIWAN AI RAP STT 已用無敏感資訊的短音檔直接測試成功
 - [ ] `meeting-stt` 已透過 LiteLLM 完成 Audio Transcriptions 測試
 - [ ] `meeting-llm` 已完成非串流與 SSE 測試
-- [ ] 已加入並驗證至少一個其他授權模型，或記錄暫不加入的原因
+- [ ] 選修多供應商時已驗證其他授權模型；未選修時已明確記錄核心流程只使用 RAP
 - [ ] 每個上游都有獨立別名，應用程式不需要知道上游 API Key
 - [ ] 已分別測試指定上游別名；尚未驗證前不啟用跨供應商 Fallback
 - [ ] 學員能說明 Base URL、上游 Key、Master Key 與模型別名的差異
