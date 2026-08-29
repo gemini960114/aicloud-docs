@@ -1,23 +1,25 @@
-# 晶創雲 AI 應用實戰：Antigravity、LiteLLM Gateway 與全端 Chatbot
+# 晶創雲雲平台 AI 應用開發課程
 
 ## 課程定位
 
-本課程以國研院晶創雲（AI-Cloud）為實作環境，帶領學員建立一台雲端 VM，透過 **Antigravity Remote SSH** 連線，使用自然語言協助檢查環境、安裝軟體、設定服務與驗證成果。
+本課程以國研院 **晶創雲雲平台（AI-Cloud）**為教學環境，帶領學員建立雲端 VM，透過 **Antigravity Remote SSH** 連線，使用自然語言協助檢查環境、安裝軟體、設定服務與驗證成果。
 
-完成基礎環境後，學員會部署 **LiteLLM Proxy**，將國網及其他已取得授權的模型 API 統一為 OpenAI-compatible 介面，再請 AI 協助建立一個 **Next.js 全端 Chatbot**。開發期間使用 Antigravity 的 **Ports** 功能預覽遠端 `localhost` 服務；正式提供服務時，再使用 **Cloudflare Tunnel** 與服務常駐機制發布。
+完成基礎環境後，學員會先驗證 **TAIWAN AI RAP** 提供的模型 API，再部署 **LiteLLM Proxy**，將國網及其他已取得授權的模型統一為 OpenAI-compatible 介面。接著以 Prompt 引導 AI 協作建立串流 Chatbot，完成 GitHub 版本交付；開發期間使用 Antigravity **Ports** 預覽遠端 `localhost`，正式提供服務時再使用 **Cloudflare Tunnel** 與服務常駐機制發布。
+
+> **名稱說明：**「TAIWAN AI RAP」是服務名稱；「TAIWAN AI RAP API」是該服務提供的程式介面。教材首次出現時使用完整名稱，後文為了閱讀流暢才簡稱 RAP。
 
 > 本課程教的是「受治理的 API Gateway」，不是共用、轉售或轉借供應商帳號。所有上游 API 都必須符合帳號、專案及供應商的授權範圍。
 
 ## 適合對象
 
-- 想認識晶創雲 VM 與網路環境的開發者或研究人員
+- 想認識晶創雲雲平台 VM 與網路環境的開發者或研究人員
 - 想用 AI 輔助完成 Linux 操作與應用開發的初學者
 - 想統一管理多個模型 API 的平台或應用開發人員
 - 具備基本終端機概念，但不要求先熟悉 React、Next.js 或 LiteLLM
 
 ## 課前準備
 
-- 可登入晶創雲，並已加入具備可用配額的專案
+- 可登入晶創雲雲平台，並已加入具備可用配額的專案
 - 可在個人電腦安裝 Antigravity IDE
 - 具備 iService／TAIWAN AI RAP 使用資格、可用計畫，以及由 Lightweight Portal 建立的 API入口金鑰
 - 若要練習多供應商路由：另備至少一組經授權的模型 API Endpoint、模型名稱與 API Key
@@ -25,7 +27,7 @@
 
 ## 完成後能做到什麼
 
-1. 建立並安全登入晶創雲 VM。
+1. 建立並安全登入晶創雲雲平台 VM。
 2. 使用 Antigravity Remote SSH 與自然語言協助完成受控的系統操作。
 3. 使用 Antigravity Ports 預覽遠端 VM 上的 `localhost` 開發服務。
 4. 透過 LiteLLM 建立統一的模型 API Gateway。
@@ -38,9 +40,9 @@
 
 | 章節 | 主題 | 主要成果 |
 | :--- | :--- | :--- |
-| [第 1 章](/guide/01_aicloud_infrastructure_setup) | 晶創雲基礎設施與 VM 建立 | VM 進入 `active`，並能從 Console 登入 |
+| [第 1 章](/guide/01_aicloud_infrastructure_setup) | 晶創雲雲平台基礎設施與 VM 建立 | VM 進入 `active`，並能從 Console 登入 |
 | [第 2 章](/guide/02_ssh_proxyjump_and_dev_env) | Antigravity Remote SSH、自然語言維運與 Ports 預覽 | 遠端工作區可操作，能安全預覽測試服務 |
-| [第 3 章](/guide/03_litellm_gateway) | LiteLLM 多模型 API Gateway | 以統一 Endpoint 呼叫國網及其他授權模型 |
+| [第 3 章](/guide/03_litellm_gateway) | TAIWAN AI RAP 與 LiteLLM 多模型 API Gateway | 以統一 Endpoint 呼叫國網及其他授權模型 |
 | [第 4 章](/guide/04_litellm_api_governance) | API 金鑰、權限、流量與服務治理 | 為 Chatbot 建立最小權限的專用憑證 |
 | [第 5 章](/guide/05_nextjs_chatbot_with_ai) | 用 AI 協作建立 Next.js 全端 Chatbot | 完成串流 Chatbot，並以人工確認的 Prompt 流程交付到 GitHub |
 | [第 6 章](/guide/06_cloudflare_deployment) | Cloudflare Tunnel 與正式部署 | 以 HTTPS 網域持續提供受保護的 Chatbot |
@@ -98,10 +100,10 @@
 ## 安全底線
 
 - API Key 不貼入對話、不寫入程式碼、不提交 Git。
-- RAP API入口金鑰依計畫個別管理；不要與 Portal 的使用者金鑰或 LiteLLM Virtual Key 混用。
+- TAIWAN AI RAP API入口金鑰依計畫個別管理；不要與 Portal 的使用者金鑰或 LiteLLM Virtual Key 混用。
 - 瀏覽器只呼叫 Chatbot 後端，不直接取得 LiteLLM 或上游供應商金鑰。
 - 開發服務透過 Antigravity Ports 預覽，不開放晶創雲的 3000、4000 等連接埠。
 - Cloudflare Tunnel 是網路入口，不取代登入、API 授權、流量限制與稽核。
 - 課程結束後停止或刪除不再使用的計費資源，並撤銷臨時金鑰。
 
-TAIWAN AI RAP 的申請畫面、模型與參數可能更新，開課時請以 [RAP API Guide](https://rap.genai.nchc.org.tw/doc?section=api-guide) 與 Lightweight Portal 當下資訊為準。
+TAIWAN AI RAP 的申請畫面、模型與參數可能更新，開課時請以 [TAIWAN AI RAP API Guide](https://rap.genai.nchc.org.tw/doc?section=api-guide) 與 Lightweight Portal 當下資訊為準。

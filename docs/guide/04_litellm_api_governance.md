@@ -77,11 +77,11 @@ Admin UI 顯示的金額取決於 LiteLLM 是否有該模型的正確價格資�
 
 | 金鑰 | 建立位置 | 主要用途 |
 | :--- | :--- | :--- |
-| RAP API入口金鑰 | RAP Lightweight Portal 的計畫／API入口 | LiteLLM 呼叫 RAP 模型 |
+| TAIWAN AI RAP API入口金鑰 | TAIWAN AI RAP Lightweight Portal 的計畫／API入口 | LiteLLM 呼叫國網模型 |
 | RAP 使用者金鑰 | RAP Portal 使用者功能 | 管理或查詢相關使用量功能，以 Portal 說明為準 |
 | LiteLLM Virtual Key | 自建 LiteLLM Gateway | Next.js Chatbot 呼叫允許的模型別名 |
 
-Next.js 只取得 LiteLLM Virtual Key；RAP API入口金鑰只存在 LiteLLM 環境中。
+Next.js 只取得 LiteLLM Virtual Key；TAIWAN AI RAP API入口金鑰只存在 LiteLLM 環境中。
 
 建議提示詞：
 

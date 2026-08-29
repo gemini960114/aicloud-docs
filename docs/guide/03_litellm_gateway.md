@@ -1,8 +1,10 @@
-# 第 3 章：LiteLLM 多模型 API Gateway
+# 第 3 章：TAIWAN AI RAP 與 LiteLLM 多模型 API Gateway
 
-本章將國網及其他已取得授權的模型 API 放在同一個 Gateway 後方。應用程式只需要記住一個 Base URL、一組應用程式金鑰及一組課程定義的模型別名。
+本章先驗證 **TAIWAN AI RAP** 提供的模型 API，再將國網及其他已取得授權的模型放在同一個 LiteLLM Gateway 後方。應用程式只需要記住一個 Base URL、一組應用程式金鑰及一組課程定義的模型別名。
 
-LiteLLM 支援許多供應商，但各家的模型、參數、串流與錯誤行為不一定完全相同。本章採取「先驗證 TAIWAN AI RAP，再逐一增加其他上游」的方式。RAP 當期資訊請以 [RAP API Guide](https://rap.genai.nchc.org.tw/doc?section=api-guide) 為準。
+LiteLLM 支援許多供應商，但各家的模型、參數、串流與錯誤行為不一定完全相同。本章採取「先驗證 TAIWAN AI RAP，再逐一增加其他上游」的方式。當期資訊請以 [TAIWAN AI RAP API Guide](https://rap.genai.nchc.org.tw/doc?section=api-guide) 為準。
+
+> **名稱說明：** TAIWAN AI RAP 是服務名稱；需要指稱程式介面時，本章使用「TAIWAN AI RAP API」。後文的 RAP 是服務簡稱。
 
 ## 1. 先理解 Gateway 的角色
 
@@ -25,9 +27,9 @@ LiteLLM 可以協助統一：
 
 它不會自動保證不同模型的答案品質、功能或資料政策相同，這些仍需由管理者驗證。
 
-## 2. 先取得 RAP API入口金鑰
+## 2. 先取得 TAIWAN AI RAP API入口金鑰
 
-依 RAP 官方文件，先登入 [Lightweight Portal](https://portal.genai.nchc.org.tw/login)，完成：
+依 TAIWAN AI RAP 官方文件，先登入 [Lightweight Portal](https://portal.genai.nchc.org.tw/login)，完成：
 
 1. 使用 iService 帳號登入。
 2. 選擇具備可用餘額的計畫。
@@ -39,9 +41,9 @@ RAP 模型請求使用 **API入口金鑰**作為 Bearer Token。Portal 另有用
 
 金鑰應由學員在遠端終端機安全寫入 `.env`，不要貼入 Antigravity 對話、課堂截圖或共用文件。
 
-## 3. RAP 官方 API 範圍
+## 3. TAIWAN AI RAP API 範圍
 
-RAP API Guide 目前列出：
+TAIWAN AI RAP API Guide 目前列出：
 
 | API 類別 | 主要用途 | 本課程 |
 | :--- | :--- | :--- |
@@ -82,9 +84,9 @@ Base URL 應直接複製自己計畫「API入口」顯示的值，不在教材�
 
 不要從舊教材複製 Base URL 或模型名稱。請使用帳號後台、講師提供資料及供應商官方文件確認當期資訊。
 
-## 5. 先直接測試 RAP API
+## 5. 先直接測試 TAIWAN AI RAP API
 
-在加入 LiteLLM 前，先依 RAP 官方文件直接測試：
+在加入 LiteLLM 前，先依 TAIWAN AI RAP 官方文件直接測試：
 
 - DNS 與 TLS 可連線
 - Bearer API入口金鑰有效
@@ -96,7 +98,7 @@ Base URL 應直接複製自己計畫「API入口」顯示的值，不在教材�
 
 建議請 Antigravity 協助，但不要把 Key 放進提示詞：
 
-> 請先閱讀 RAP API Guide 與目前專案中的 .env.example，提出一個不顯示、不記錄 API入口金鑰的連線測試計畫。先以 GET /models 確認可用 Model ID，再測試 Chat Completions 的非串流、SSE 串流、錯誤模型名稱與未授權請求。Base URL 必須使用我在計畫 API入口取得的環境變數，不可自行猜測或寫死。先列出預期結果，不要執行。
+> 請先閱讀 TAIWAN AI RAP API Guide 與目前專案中的 .env.example，提出一個不顯示、不記錄 API入口金鑰的連線測試計畫。先以 GET /models 確認可用 Model ID，再測試 Chat Completions 的非串流、SSE 串流、錯誤模型名稱與未授權請求。Base URL 必須使用我在計畫 API入口取得的環境變數，不可自行猜測或寫死。先列出預期結果，不要執行。
 
 若直接呼叫尚未成功，不要急著加入 LiteLLM，否則會同時排查兩層問題。
 
@@ -140,7 +142,7 @@ general_settings:
 
 第一個提示詞：
 
-> 請檢查 ~/aicloud-course/gateway，根據 RAP API Guide 與 LiteLLM 官方文件規劃 Docker Compose 部署。先確認 RAP Base URL 的版本路徑不會重複，並以 GET /models 驗證實際 Model ID。LiteLLM 只能監聽 127.0.0.1:4000，config.yaml 只能引用環境變數，真正金鑰放在不納入 Git 的 .env。請先提出檔案清單、映像版本、健康檢查、啟停與驗證方式，不要建立檔案。
+> 請檢查 ~/aicloud-course/gateway，根據 TAIWAN AI RAP API Guide 與 LiteLLM 官方文件規劃 Docker Compose 部署。先確認 RAP Base URL 的版本路徑不會重複，並以 GET /models 驗證實際 Model ID。LiteLLM 只能監聽 127.0.0.1:4000，config.yaml 只能引用環境變數，真正金鑰放在不納入 Git 的 .env。請先提出檔案清單、映像版本、健康檢查、啟停與驗證方式，不要建立檔案。
 
 審閱後再執行：
 

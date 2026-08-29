@@ -52,7 +52,7 @@ Next.js 讓頁面與伺服器端 API 放在同一個專案中，適合本課程�
 
 ## 3. 第一輪提示：請 AI 規劃
 
-> 我要在 ~/aicloud-course/chatbot 建立一個 Next.js 全端 AI Chatbot。瀏覽器只能呼叫同源的 /api/chat，伺服器端再使用 OpenAI-compatible Chat Completions 介面呼叫 LiteLLM 的 nchc-chat 模型別名。請依 RAP API Guide 使用 messages，並支援 stream=true 的 SSE 回覆；不要使用 Legacy Completions，也不要把 ASR、TTS、Rerank 或 Image Endpoint 混入本章。LiteLLM Base URL、Virtual Key 與模型別名都必須由伺服器端環境變數讀取，不能出現在前端 Bundle、日誌或 Git。請先檢查 Node.js 環境與目錄狀態，提出架構、檔案清單、資料流、錯誤處理及測試計畫，暫時不要建立檔案。
+> 我要在 ~/aicloud-course/chatbot 建立一個 Next.js 全端 AI Chatbot。瀏覽器只能呼叫同源的 /api/chat，伺服器端再使用 OpenAI-compatible Chat Completions 介面呼叫 LiteLLM 的 nchc-chat 模型別名。請依 TAIWAN AI RAP API Guide 使用 messages，並支援 stream=true 的 SSE 回覆；不要使用 Legacy Completions，也不要把 ASR、TTS、Rerank 或 Image Endpoint 混入本章。LiteLLM Base URL、Virtual Key 與模型別名都必須由伺服器端環境變數讀取，不能出現在前端 Bundle、日誌或 Git。請先檢查 Node.js 環境與目錄狀態，提出架構、檔案清單、資料流、錯誤處理及測試計畫，暫時不要建立檔案。
 
 審閱計畫時確認：
 
@@ -134,7 +134,7 @@ Chatbot 顯示的是使用者訊息與最終回覆，不把模型內部推理包
 
 - 瀏覽器開發者工具看不到 LiteLLM Key。
 - Network Request 只送到 Chatbot 的 `/api/chat`。
-- Browser Request 中不會出現 RAP API入口金鑰或 RAP Base URL。
+- Browser Request 中不會出現 TAIWAN AI RAP API入口金鑰或 Base URL。
 - Git 變更中沒有 `.env`。
 - 停止 LiteLLM 後，Chatbot 顯示安全且可理解的錯誤。
 - 重新啟動 LiteLLM 後，Chatbot 可以恢復。

@@ -55,11 +55,11 @@
 > 禁止事項：不得使用來源不明的安裝腳本，不得修改 SSH、防火牆或公開 Port。
 > 執行節奏：先提出計畫，不要執行；等我確認後一次完成一個階段。
 
-## 4. Recipe：RAP 與 LiteLLM Gateway
+## 4. Recipe：TAIWAN AI RAP 與 LiteLLM Gateway
 
-> 背景與現況：我已在 RAP Lightweight Portal 選擇正確計畫，API Base URL、API入口金鑰與 Model ID 會由我透過遠端終端機設定為環境變數。
+> 背景與現況：我已在 TAIWAN AI RAP Lightweight Portal 選擇正確計畫，API Base URL、API入口金鑰與 Model ID 會由我透過遠端終端機設定為環境變數。
 > 目標：建立只監聽 127.0.0.1:4000 的 LiteLLM Gateway，並把實際 RAP 模型映射成 nchc-chat。
-> 技術限制：先依 RAP API Guide 測試 GET /models，再測試 Chat Completions 的非串流與 SSE；LiteLLM 使用鎖定版本的容器與只引用環境變數的設定檔。
+> 技術限制：先依 TAIWAN AI RAP API Guide 測試 GET /models，再測試 Chat Completions 的非串流與 SSE；LiteLLM 使用鎖定版本的容器與只引用環境變數的設定檔。
 > 安全限制：不得讀取、輸出、記錄或提交任何金鑰；不得在晶創雲開放 4000。
 > 驗收：正確請求成功，錯誤 Key、錯誤模型與上游中斷均有明確結果，重啟後設定仍存在。
 > 請先列出資料流、檔案清單、版本路徑風險、測試矩陣及回復方法，不要建立檔案。
@@ -68,7 +68,7 @@
 
 > 背景與現況：LiteLLM 的 nchc-chat 已通過非串流與 SSE 測試。
 > 目標：在 [專案目錄] 建立 Next.js 全端 Chatbot。
-> 架構限制：瀏覽器只呼叫同源 /api/chat；Next.js 伺服器端使用 LiteLLM Virtual Key；不得把 RAP Base URL、RAP API入口金鑰或 LiteLLM Key 送到瀏覽器。
+> 架構限制：瀏覽器只呼叫同源 /api/chat；Next.js 伺服器端使用 LiteLLM Virtual Key；不得把 TAIWAN AI RAP Base URL、API入口金鑰或 LiteLLM Key 送到瀏覽器。
 > 功能：使用者／助理訊息、串流更新同一則回覆、送出與停止、等待與錯誤狀態、鍵盤及行動裝置基本可用。
 > 不包含：RAG、Agent、Tool Calling、檔案上傳、ASR、TTS、Rerank、Image 或對話資料庫。
 > 驗收：Lint、型別檢查與 Production Build 成功；前端 Bundle、Git 與日誌不含 Secret；錯誤 Key、模型不存在、上游逾時與使用者取消皆有測試。
@@ -87,7 +87,7 @@
 
 > 目標：在不顯示 Secret 值的前提下，檢查專案是否可能洩漏憑證。
 > 請檢查 Git 追蹤檔案、.gitignore、前端 Bundle、NEXT_PUBLIC_*、容器映像建置內容、Compose 設定、應用日誌、錯誤回應與瀏覽器 Network Request。
-> 另確認 RAP API入口金鑰只存在 LiteLLM、LiteLLM Master Key 只供管理者使用、Next.js 只持有最小權限 Virtual Key。
+> 另確認 TAIWAN AI RAP API入口金鑰只存在 LiteLLM、LiteLLM Master Key 只供管理者使用、Next.js 只持有最小權限 Virtual Key。
 > 不得執行會列出環境變數值或檔案內容的命令。只回報變數名稱、檔案位置、是否可能曝光與修正建議。發現疑似外洩時立即停下來，先建議撤銷與輪替。
 
 ## 8. Recipe：GitHub 版本交付

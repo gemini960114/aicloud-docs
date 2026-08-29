@@ -1,24 +1,24 @@
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
-  title: "晶創雲 AI 應用實戰手冊",
-  description: "使用 Antigravity、LiteLLM、Next.js 與 Cloudflare 建立晶創雲多模型 AI 應用",
+  title: "晶創雲雲平台 AI 應用開發課程",
+  description: "使用 Antigravity、TAIWAN AI RAP、LiteLLM 與 Cloudflare，學習 AI 應用建置、治理與發布",
   base: '/aicloud-docs/',
   themeConfig: {
     nav: [
       { text: '首頁', link: '/' },
       { text: '課程大綱', link: '/guide/00_course_syllabus' },
-      { text: '晶創雲後台', link: 'https://ai-cloud.iic.nchc.org.tw/' },
-      { text: 'RAP API Guide', link: 'https://rap.genai.nchc.org.tw/doc?section=api-guide' }
+      { text: '晶創雲雲平台後台', link: 'https://ai-cloud.iic.nchc.org.tw/' },
+      { text: 'TAIWAN AI RAP API Guide', link: 'https://rap.genai.nchc.org.tw/doc?section=api-guide' }
     ],
     sidebar: [
       {
         text: '📚 課程指南',
         items: [
           { text: '📌 課程總綱與學習地圖', link: '/guide/00_course_syllabus' },
-          { text: '☁️ 第 1 章：晶創雲 VM 建立', link: '/guide/01_aicloud_infrastructure_setup' },
+          { text: '☁️ 第 1 章：晶創雲雲平台 VM 建立', link: '/guide/01_aicloud_infrastructure_setup' },
           { text: '🛰️ 第 2 章：Antigravity Remote SSH 與 Ports', link: '/guide/02_ssh_proxyjump_and_dev_env' },
-          { text: '🔀 第 3 章：LiteLLM 多模型 Gateway', link: '/guide/03_litellm_gateway' },
+          { text: '🔀 第 3 章：TAIWAN AI RAP 與 LiteLLM Gateway', link: '/guide/03_litellm_gateway' },
           { text: '🛡️ 第 4 章：API 權限與服務治理', link: '/guide/04_litellm_api_governance' },
           { text: '💬 第 5 章：AI 協作建立 Next.js Chatbot', link: '/guide/05_nextjs_chatbot_with_ai' },
           { text: '🔒 第 6 章：Cloudflare 正式部署', link: '/guide/06_cloudflare_deployment' },
