@@ -19,7 +19,8 @@
 
 - 可登入晶創雲，並已加入具備可用配額的專案
 - 可在個人電腦安裝 Antigravity IDE
-- 具備至少一組經授權的模型 API Endpoint、模型名稱與 API Key
+- 具備 iService／TAIWAN AI RAP 使用資格、可用計畫，以及由 Lightweight Portal 建立的 API入口金鑰
+- 若要練習多供應商路由：另備至少一組經授權的模型 API Endpoint、模型名稱與 API Key
 - 若要完成正式發布：可使用 Cloudflare Zero Trust，並有可管理的網域
 
 ## 完成後能做到什麼
@@ -92,7 +93,10 @@
 ## 安全底線
 
 - API Key 不貼入對話、不寫入程式碼、不提交 Git。
+- RAP API入口金鑰依計畫個別管理；不要與 Portal 的使用者金鑰或 LiteLLM Virtual Key 混用。
 - 瀏覽器只呼叫 Chatbot 後端，不直接取得 LiteLLM 或上游供應商金鑰。
 - 開發服務透過 Antigravity Ports 預覽，不開放晶創雲的 3000、4000 等連接埠。
 - Cloudflare Tunnel 是網路入口，不取代登入、API 授權、流量限制與稽核。
 - 課程結束後停止或刪除不再使用的計費資源，並撤銷臨時金鑰。
+
+TAIWAN AI RAP 的申請畫面、模型與參數可能更新，開課時請以 [RAP API Guide](https://rap.genai.nchc.org.tw/doc?section=api-guide) 與 Lightweight Portal 當下資訊為準。

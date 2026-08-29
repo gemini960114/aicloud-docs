@@ -8,7 +8,8 @@ export default defineConfig({
     nav: [
       { text: '首頁', link: '/' },
       { text: '課程大綱', link: '/guide/00_course_syllabus' },
-      { text: '晶創雲後台', link: 'https://ai-cloud.iic.nchc.org.tw/' }
+      { text: '晶創雲後台', link: 'https://ai-cloud.iic.nchc.org.tw/' },
+      { text: 'RAP API Guide', link: 'https://rap.genai.nchc.org.tw/doc?section=api-guide' }
     ],
     sidebar: [
       {

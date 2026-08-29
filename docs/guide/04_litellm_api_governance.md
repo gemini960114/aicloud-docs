@@ -43,6 +43,16 @@ LiteLLM 的 Virtual Key、使用者／團隊與預算管理需要資料庫。課
 
 不要讓學員把 Master Key 貼給 Antigravity。可在遠端終端機以 Secret 環境變數提供，並要求 AI 不讀取或輸出值。
 
+### 不要混淆三種 RAP／LiteLLM 金鑰
+
+| 金鑰 | 建立位置 | 主要用途 |
+| :--- | :--- | :--- |
+| RAP API入口金鑰 | RAP Lightweight Portal 的計畫／API入口 | LiteLLM 呼叫 RAP 模型 |
+| RAP 使用者金鑰 | RAP Portal 使用者功能 | 管理或查詢相關使用量功能，以 Portal 說明為準 |
+| LiteLLM Virtual Key | 自建 LiteLLM Gateway | Next.js Chatbot 呼叫允許的模型別名 |
+
+Next.js 只取得 LiteLLM Virtual Key；RAP API入口金鑰只存在 LiteLLM 環境中。
+
 建議提示詞：
 
 > 請依 LiteLLM 官方文件規劃一組給 course-chatbot-dev 使用的 Virtual Key。它只能呼叫 nchc-chat，需有到期時間、保守的 RPM／TPM，並可被獨立撤銷。先列出管理 API 操作、必要前提與驗證方法，不要顯示 Master Key，也不要執行。
@@ -90,6 +100,7 @@ Fallback 不等於永遠重試。先依失敗類型決定行為：
 - Token 或使用量
 - 上游 Provider／部署
 - Request ID
+- RAP 計畫及 API入口金鑰的非敏感代號
 
 預設不要完整記錄：
 
