@@ -12,11 +12,11 @@
 
 晶創雲專案的 SSH 路徑可能有兩種，請以課程現場架構為準。
 
-### 情境 A：VM 具有可連線位址
+### 情境 A：VM 已關聯浮動 IP，可直接連線
 
 ```ssh-config
 Host aicloud-course
-  HostName <VM 可連線位址>
+  HostName <VM 浮動 IP>
   User ubuntu
   IdentityFile ~/.ssh/course-your-id.pem
   IdentitiesOnly yes
@@ -44,6 +44,15 @@ Host aicloud-course
 ```
 
 不要直接複製範例 IP、帳號或私鑰路徑。由講師依專案網路提供實際值。
+
+直接連線前確認：
+
+- VM 詳細頁顯示浮動 IP 已關聯到正確網路介面。
+- 安全群組允許目前核准來源連入 TCP 22。
+- 安全群組沒有因除錯而將 TCP 22 開放給 `0.0.0.0/0`。
+- `HostName` 使用浮動 IP，不是只能在專案內部路由的私有 IP。
+
+若使用情境 B，只有跳板機需要可從個人電腦到達的浮動 IP；`aicloud-course` 繼續使用課程 VM 的私有 IP。
 
 先在個人電腦終端機驗證：
 
@@ -241,6 +250,7 @@ Antigravity Ports 適合個人開發與課堂驗證，但不應視為對外服�
 ## 9. 本章完成條件
 
 - [ ] Antigravity Remote SSH 連線成功
+- [ ] 已確認使用正確的 VM 浮動 IP，或正確的跳板機與私有 IP
 - [ ] 能辨認終端機正在操作遠端 VM
 - [ ] AI 已先檢查、再規劃、經確認後才安裝
 - [ ] 已完成健康檢查，更新與重新開機均經分階段確認

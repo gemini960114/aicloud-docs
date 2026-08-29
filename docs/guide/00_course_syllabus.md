@@ -40,7 +40,7 @@
 
 | 章節 | 主題 | 主要成果 |
 | :--- | :--- | :--- |
-| [第 1 章](/guide/01_aicloud_infrastructure_setup) | 晶創雲雲平台基礎設施與 VM 建立 | VM 進入 `active`，並能從 Console 登入 |
+| [第 1 章](/guide/01_aicloud_infrastructure_setup) | 晶創雲雲平台基礎設施與 VM 建立 | VM 為 `active`，完成 Console、浮動 IP／跳板機與 SSH 安全群組準備 |
 | [第 2 章](/guide/02_ssh_proxyjump_and_dev_env) | Antigravity Remote SSH、自然語言維運與 Ports 預覽 | 完成受控更新與 uv 等必要工具，並安全預覽測試服務 |
 | [第 3 章](/guide/03_litellm_gateway) | TAIWAN AI RAP 與 LiteLLM 多模型 API Gateway | 以統一 Endpoint 呼叫國網及其他授權模型 |
 | [第 4 章](/guide/04_litellm_api_governance) | API 金鑰、權限、流量與服務治理 | 為 Chatbot 建立最小權限的專用憑證 |
