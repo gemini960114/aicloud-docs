@@ -3,6 +3,9 @@ import { defineConfig } from 'vitepress'
 export default defineConfig({
   title: "晶創雲雲平台 AI 應用開發課程",
   description: "使用 Antigravity、TAIWAN AI RAP、LiteLLM 與 Cloudflare，學習 AI 應用建置、治理與發布",
+  head: [
+    ['link', { rel: 'icon', href: 'https://docs.central.iic.nchc.org.tw/user-panel/img/favicon.ico' }]
+  ],
   base: '/aicloud-docs/',
   themeConfig: {
     nav: [

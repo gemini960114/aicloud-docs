@@ -2,7 +2,7 @@
 
 ## 課程定位
 
-本課程以國研院 **晶創雲雲平台（AI-Cloud）**為教學環境，帶領學員建立雲端 VM，透過 **Antigravity Remote SSH** 連線，使用自然語言協助檢查環境、安裝軟體、設定服務與驗證成果。
+本課程以國研院 **晶創雲雲平台（AI-Cloud）** 為教學環境，帶領學員建立雲端 VM，透過 **Antigravity Remote SSH** 連線，使用自然語言協助檢查環境、安裝軟體、設定服務與驗證成果。
 
 完成基礎環境後，學員會先驗證 **TAIWAN AI RAP** 提供的模型 API，再部署 **LiteLLM Proxy**，將國網及其他已取得授權的模型統一為 OpenAI-compatible 介面。接著以 Prompt 引導 AI 協作建立串流 Chatbot，完成 GitHub 版本交付；開發期間使用 Antigravity **Ports** 預覽遠端 `localhost`，正式提供服務時再使用 **Cloudflare Tunnel** 與服務常駐機制發布。
 
