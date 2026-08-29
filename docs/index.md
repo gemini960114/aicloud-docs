@@ -26,12 +26,12 @@ features:
     linkText: 設定遠端開發
   - icon: 🔀
     title: 第 3 章｜TAIWAN AI RAP 與 LiteLLM
-    details: 先驗證 TAIWAN AI RAP 提供的模型 API，再以 LiteLLM 將國網及其他已授權模型統一為 OpenAI-compatible Gateway。
+    details: 先驗證 TAIWAN AI RAP API，再以 LiteLLM 將國網、OpenAI、Anthropic Claude 等已授權上游統一為模型別名與單一 Gateway。
     link: /guide/03_litellm_gateway
     linkText: 建立模型 Gateway
   - icon: 🛡️
-    title: 第 4 章｜API 權限與服務治理
-    details: 使用模型別名、Virtual Key、流量限制與使用紀錄，讓 Chatbot 只取得所需的最小權限。
+    title: 第 4 章｜Virtual Key 與流量治理
+    details: 向不同團隊與 Chatbot 發放獨立 Virtual Key，分別限制模型、RPM、TPM、期限與預算，並追蹤使用紀錄。
     link: /guide/04_litellm_api_governance
     linkText: 設計存取治理
   - icon: 💬

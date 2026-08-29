@@ -1,6 +1,6 @@
 # 第 3 章：TAIWAN AI RAP 與 LiteLLM 多模型 API Gateway
 
-本章先驗證 **TAIWAN AI RAP** 提供的模型 API，再將國網及其他已取得授權的模型放在同一個 LiteLLM Gateway 後方。應用程式只需要記住一個 Base URL、一組應用程式金鑰及一組課程定義的模型別名。
+本章先驗證 **TAIWAN AI RAP** 提供的模型 API，再將國網及其他已取得授權的模型放在同一個 LiteLLM Gateway 後方。Gateway 集中保管上游憑證；團隊與應用程式只取得 LiteLLM 發出的 Virtual Key，並透過一個 Base URL 與課程定義的模型別名呼叫服務。
 
 LiteLLM 支援許多供應商，但各家的模型、參數、串流與錯誤行為不一定完全相同。本章採取「先驗證 TAIWAN AI RAP，再逐一增加其他上游」的方式。當期資訊請以 [TAIWAN AI RAP API Guide](https://rap.genai.nchc.org.tw/doc?section=api-guide) 為準。
 
@@ -9,12 +9,16 @@ LiteLLM 支援許多供應商，但各家的模型、參數、串流與錯誤行
 ## 1. 先理解 Gateway 的角色
 
 ```text
-[Chatbot 或測試程式]
-        │ OpenAI-compatible request
-        ▼
-[LiteLLM Proxy :4000]
-        ├── model: nchc-chat    → 國網模型 API
-        └── model: backup-chat  → 其他授權 API
+[TAIWAN AI RAP API] ───────────┐
+[OpenAI API（選配）] ──────────┼──▶ [LiteLLM Proxy :4000]
+[Anthropic Claude API（選配）] ┘              │
+                                              ├── nchc-chat
+                                              ├── openai-chat
+                                              ├── claude-chat
+                                              └── general-chat（路由別名）
+                                                       │
+                                                       ▼
+                                      [受控 Virtual Key 的團隊與應用程式]
 ```
 
 LiteLLM 可以協助統一：
@@ -26,6 +30,18 @@ LiteLLM 可以協助統一：
 - Virtual Key、流量限制及使用紀錄
 
 它不會自動保證不同模型的答案品質、功能或資料政策相同，這些仍需由管理者驗證。
+
+### 本課程要完成的 Gateway 成果
+
+本章不是單純安裝 LiteLLM，也不是把同一組上游 API Key 複製給所有人。完成後應能：
+
+1. 將 TAIWAN AI RAP API 設為主要上游。
+2. 視課程可用授權加入 OpenAI、Anthropic Claude 或其他模型 API。
+3. 用模型別名隱藏上游實際 Model ID，讓應用程式不必跟著供應商設定變動。
+4. 只讓 LiteLLM 持有上游 API Key。
+5. 在下一章向不同團隊與應用程式發放各自的 Virtual Key，分別限制模型、流量、期限及預算。
+
+> **授權邊界：** LiteLLM 提供集中管理與受控分發的技術能力，不會自動授予 API 轉售、轉借或公開分享權利。本課程只在帳號、計畫與各供應商條款允許的範圍內，建立內部 AI API Gateway。
 
 ## 2. 先取得 TAIWAN AI RAP API入口金鑰
 
@@ -161,16 +177,42 @@ general_settings:
 
 開發階段如需查看 LiteLLM UI 或 API 文件，可透過 Antigravity Ports 暫時預覽 4000，不要在晶創雲開放公網 Ingress。
 
-## 9. 加入第二個授權供應商
+## 9. 建立多上游模型清單
 
-第一個上游通過全部測試後，再加入第二個供應商。為不同用途建立穩定別名，例如：
+第一個上游通過全部測試後，再依實際授權加入 OpenAI、Anthropic Claude 或其他供應商。課堂不要求每位學員都同時持有三家的帳號；沒有額外授權時，以 TAIWAN AI RAP 加上一個講師核准的測試上游即可完成核心練習。
+
+以下設定只呈現組合方式，`<...>` 必須換成帳號後台當期可用的 Model ID；真正金鑰仍放在 `.env`：
+
+```yaml
+model_list:
+  - model_name: nchc-chat
+    litellm_params:
+      model: openai/<RAP_MODEL_ID>
+      api_base: os.environ/NCHC_API_BASE
+      api_key: os.environ/NCHC_API_KEY
+
+  - model_name: openai-chat
+    litellm_params:
+      model: openai/<OPENAI_MODEL_ID>
+      api_key: os.environ/OPENAI_API_KEY
+
+  - model_name: claude-chat
+    litellm_params:
+      model: anthropic/<ANTHROPIC_MODEL_ID>
+      api_key: os.environ/ANTHROPIC_API_KEY
+```
+
+實際 Provider 前綴與參數以 [LiteLLM Providers 文件](https://docs.litellm.ai/docs/providers)為準。不要因為範例出現 OpenAI 或 Anthropic，就假設學員已取得相關 API 使用或再分發授權。
+
+為不同用途建立穩定別名，例如：
 
 - `nchc-chat`
-- `fast-chat`
-- `quality-chat`
+- `openai-chat`
+- `claude-chat`
+- `general-chat`
 - `embedding`
 
-不要直接把供應商當期的完整 Model ID 散布在所有應用程式。模型別名讓管理者可以在 Gateway 調整後端，而不必同步修改每一個 Chatbot。
+前三個別名代表指定上游，方便驗證與權限管理；`general-chat` 才適合依政策配置多個部署、負載平衡或備援。不要直接把供應商當期的完整 Model ID 散布在所有應用程式。模型別名讓管理者可以在 Gateway 調整後端，而不必同步修改每一個使用端。
 
 新增後再次測試：
 
@@ -180,6 +222,10 @@ general_settings:
 - Timeout 與錯誤格式
 - Token／費率資料是否可正確記錄
 - Prompt 是否允許傳送至該供應商
+
+建議提示詞：
+
+> 請根據 LiteLLM 官方 Provider 文件與目前 `.env.example`，規劃把已取得授權的 TAIWAN AI RAP、OpenAI 與 Anthropic Claude 上游加入同一個 Gateway。請使用 `nchc-chat`、`openai-chat`、`claude-chat` 作為別名，真正 Model ID 與金鑰只從環境變數取得。先列出各上游的必要欄位、相容性測試、資料政策與失敗停損點，不要讀取 Secret，也不要立即修改檔案。
 
 ## 10. 特殊 RAP 模型不能套用 Chat 流程
 
@@ -207,6 +253,8 @@ RAP 官方特殊模型文件提供以下例子：
 - [ ] `.env` 未加入 Git
 - [ ] `nchc-chat` 非串流與串流測試成功
 - [ ] 已加入並驗證至少一個其他授權模型，或記錄暫不加入的原因
+- [ ] 每個上游都有獨立別名，應用程式不需要知道上游 API Key
+- [ ] 已分別測試指定上游別名；尚未驗證前不啟用跨供應商 Fallback
 - [ ] 學員能說明 Base URL、上游 Key、Master Key 與模型別名的差異
 
 下一章將進一步設定 [API 金鑰與服務治理](/guide/04_litellm_api_governance)。

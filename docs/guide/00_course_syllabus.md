@@ -30,8 +30,8 @@
 1. 建立並安全登入晶創雲雲平台 VM。
 2. 使用 Antigravity Remote SSH 與自然語言協助完成受控的系統操作。
 3. 使用 Antigravity Ports 預覽遠端 VM 上的 `localhost` 開發服務。
-4. 透過 LiteLLM 建立統一的模型 API Gateway。
-5. 為應用程式建立獨立金鑰、模型權限、流量限制與使用紀錄。
+4. 透過 LiteLLM 將 TAIWAN AI RAP 與其他已授權模型整合成統一的模型 API Gateway。
+5. 向不同團隊與應用程式發放獨立 Virtual Key，分別管理模型權限、流量、期限、預算與使用紀錄。
 6. 以需求提示詞引導 AI 建立 Next.js 全端 Chatbot，而不是單純複製完整程式碼。
 7. 以 Prompt 完成 GitHub CLI 網頁授權、Secret 檢查與受控的版本交付。
 8. 使用 Cloudflare Tunnel 將正式服務安全發布到網際網路。
@@ -42,8 +42,8 @@
 | :--- | :--- | :--- |
 | [第 1 章](/guide/01_aicloud_infrastructure_setup) | 晶創雲雲平台基礎設施與 VM 建立 | VM 為 `active`，完成 Console、浮動 IP／跳板機與 SSH 安全群組準備 |
 | [第 2 章](/guide/02_ssh_proxyjump_and_dev_env) | Antigravity Remote SSH、自然語言維運與 Ports 預覽 | 完成受控更新與 uv 等必要工具，並安全預覽測試服務 |
-| [第 3 章](/guide/03_litellm_gateway) | TAIWAN AI RAP 與 LiteLLM 多模型 API Gateway | 以統一 Endpoint 呼叫國網及其他授權模型 |
-| [第 4 章](/guide/04_litellm_api_governance) | API 金鑰、權限、流量與服務治理 | 為 Chatbot 建立最小權限的專用憑證 |
+| [第 3 章](/guide/03_litellm_gateway) | TAIWAN AI RAP 與 LiteLLM 多模型 API Gateway | 將國網、OpenAI、Anthropic Claude 等已授權上游統一為模型別名與單一 Endpoint |
+| [第 4 章](/guide/04_litellm_api_governance) | Virtual Key、多租戶權限與流量治理 | 為團隊與 Chatbot 發放不同權限、限額、期限及可撤銷的憑證 |
 | [第 5 章](/guide/05_nextjs_chatbot_with_ai) | 用 AI 協作建立 Next.js 全端 Chatbot | 完成串流 Chatbot，並以人工確認的 Prompt 流程交付到 GitHub |
 | [第 6 章](/guide/06_cloudflare_deployment) | Cloudflare Tunnel 與正式部署 | 以 HTTPS 網域持續提供受保護的 Chatbot |
 
@@ -66,8 +66,9 @@
 [晶創雲 VM]
 ├── Next.js Chatbot        127.0.0.1:3000
 └── LiteLLM Proxy          127.0.0.1:4000
-          ├── 國網模型 API
-          └── 其他已授權模型 API
+          ├── TAIWAN AI RAP API
+          ├── OpenAI API（選配、須經授權）
+          └── Anthropic Claude API（選配、須經授權）
 
 正式服務
 ────────
@@ -81,8 +82,9 @@
       │ 伺服器端專用 Virtual Key
       ▼
 [LiteLLM :4000（不直接公開）]
-      ├── 國網模型 API
-      └── 其他已授權模型 API
+      ├── TAIWAN AI RAP API
+      ├── OpenAI API（選配、須經授權）
+      └── Anthropic Claude API（選配、須經授權）
 ```
 
 ## 貫穿全課程的 AI 協作原則

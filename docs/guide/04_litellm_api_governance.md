@@ -1,10 +1,12 @@
-# 第 4 章：API 金鑰、權限、流量與服務治理
+# 第 4 章：Virtual Key、多租戶權限與流量治理
 
-上一章使用 LiteLLM Master Key 完成管理者測試。本章要把「能呼叫」提升為「能安全提供給應用程式使用」。
+上一章使用 LiteLLM Master Key 完成管理者測試。本章要把「能呼叫多個上游」提升為「能安全提供給不同團隊與應用程式使用」。
 
 最重要的原則是：
 
 > 上游供應商 Key 只交給 Gateway；LiteLLM Master Key 只交給管理者；每個應用程式使用獨立、最小權限、可撤銷的 Virtual Key。
+
+這裡的「多租戶」是指在已授權範圍內，讓不同內部團隊、專案或應用程式共用一個 Gateway，但各自擁有獨立身分、模型權限與用量限制；不是共用或轉售上游帳號。
 
 ## 1. 四層身分與憑證
 
@@ -87,20 +89,49 @@ Next.js 只取得 LiteLLM Virtual Key；TAIWAN AI RAP API入口金鑰只存在 L
 
 > 請依 LiteLLM 官方文件規劃一組給 course-chatbot-dev 使用的 Virtual Key。它只能呼叫 nchc-chat，需有到期時間、保守的 RPM／TPM，並可被獨立撤銷。先列出管理 API 操作、必要前提與驗證方法，不要顯示 Master Key，也不要執行。
 
-## 5. 權限與限制的驗收矩陣
+## 5. 多租戶受控分發實作
+
+本節把 LiteLLM 從單一 Chatbot Proxy 提升為可治理的內部模型服務。課堂建立三個用途不同的主體；數值是教學起始值，講師應依上游額度與實測結果調整：
+
+| 主體／Key | 允許的模型別名 | 教學限制 | 用途 |
+| :--- | :--- | :--- | :--- |
+| `team-a-dev` | `nchc-chat` | 10 RPM、保守 TPM、短期到期 | 驗證單一國網模型權限 |
+| `team-b-eval` | `nchc-chat`、`claude-chat` | 20 RPM、獨立 TPM 與期限 | 比較兩個已授權上游 |
+| `chatbot-prod` | `nchc-chat`（或已驗證的 `general-chat`） | 正式環境 RPM／TPM、可用時設定週期預算 | 第 5、6 章的 Chatbot |
+
+若沒有 Anthropic Claude 授權，`team-b-eval` 可改用另一個已授權上游；不可為完成表格而使用未授權憑證。
+
+### 操作順序
+
+1. 建立 Team A、Team B 與正式 Chatbot 的非敏感識別資料。
+2. 設定每個主體允許的模型清單、RPM、TPM、平行請求數、期限與預算週期。
+3. 各自產生 Virtual Key，僅在建立當下安全交付給指定使用端。
+4. 分別執行允許模型、禁止模型、限流、到期及撤銷測試。
+5. 在 Admin UI 或管理 API 確認用量可歸屬到正確的 Team、Key 與模型。
+
+LiteLLM 可在 Team、使用者、Key 及個別模型層級設定預算或流量限制。課程先採用容易解釋的「Team 共用上限＋Key 個別上限」；實際生效順序與版本差異以 [LiteLLM Budgets and Rate Limits](https://docs.litellm.ai/docs/proxy/users)為準。
+
+建議提示詞：
+
+> 請依 LiteLLM 官方 Virtual Keys 與 Budgets／Rate Limits 文件，規劃 `team-a-dev`、`team-b-eval`、`chatbot-prod` 三種受控存取。列出每個主體的允許模型、RPM、TPM、平行請求數、期限、預算與非敏感 Metadata，並說明 Team 上限和 Key 上限如何配合。先產生不含 Secret 的操作計畫及驗收矩陣，不要執行，也不要在輸出中顯示 Master Key 或 Virtual Key。
+
+## 6. 權限與限制的驗收矩陣
 
 | 測試 | 預期結果 |
 | :--- | :--- |
-| 正確 Virtual Key＋允許模型 | 成功 |
-| 正確 Virtual Key＋未授權模型 | 拒絕 |
+| Team A Key＋`nchc-chat` | 成功，且用量歸屬 Team A |
+| Team A Key＋`claude-chat` | 拒絕，不呼叫上游 |
+| Team B Key＋已允許模型 | 成功，且用量歸屬 Team B |
+| Chatbot Key＋核准的正式模型別名 | 成功，不暴露實際上游憑證 |
 | 錯誤或撤銷 Key | 401／403 |
 | 超過 RPM／TPM | 429 或文件定義的限制錯誤 |
+| 超過可靠計價模型的週期預算 | 拒絕或依設定執行預算政策 |
 | 過期 Key | 拒絕 |
 | 重新啟動 LiteLLM | Key 與治理資料仍存在 |
 
-課堂上應真的執行負向測試，不能只測成功路徑。
+課堂上應真的執行負向測試，不能只測成功路徑。若 RAP 模型缺少可靠價格資料，以請求數、Token、RPM／TPM 做限制，預算測試改用成本資料已驗證的模型；不要把 LiteLLM 估算當作 RAP 正式餘額。
 
-## 6. 模型路由與備援
+## 7. 模型路由與備援
 
 Fallback 不等於永遠重試。先依失敗類型決定行為：
 
@@ -118,7 +149,7 @@ Fallback 不等於永遠重試。先依失敗類型決定行為：
 - 費率與 Token 計算能否正確記錄
 - Streaming 與錯誤行為是否一致
 
-## 7. 日誌與隱私
+## 8. 日誌與隱私
 
 至少記錄：
 
@@ -141,7 +172,7 @@ Fallback 不等於永遠重試。先依失敗類型決定行為：
 
 若教學需要觀察 Prompt，使用無敏感資料的測試內容，並說明保存期限與可存取人員。
 
-## 8. 金鑰生命週期
+## 9. 金鑰生命週期
 
 ```text
 建立 → 發給單一應用 → 監控 → 定期輪替 → 撤銷 → 驗證不可再使用
@@ -157,19 +188,20 @@ Fallback 不等於永遠重試。先依失敗類型決定行為：
 
 任何上游供應商的 API Key 都應只透過後端保存及呼叫，不得部署到瀏覽器或提交版本控制。
 
-## 9. 請 Antigravity 產生治理報告
+## 10. 請 Antigravity 產生治理報告
 
 > 請在不讀取或顯示任何 Secret 的前提下，檢查目前 LiteLLM 的治理設定。請回報：資料庫持久化、模型別名、Virtual Key 權限、到期時間、RPM／TPM、預算、日誌遮蔽、備援條件及撤銷流程。將已驗證事實、推測及尚未設定項目分開列出，並提出負向測試清單。先不要修改設定。
 
 這份報告應放入 `notes/`，但不得包含 Key、完整 Prompt 或個人資料。
 
-## 10. 本章完成條件
+## 11. 本章完成條件
 
 - [ ] PostgreSQL 與 LiteLLM 治理資料可持久化
 - [ ] Admin UI 只透過 Antigravity Ports 私人預覽
 - [ ] 能區分觀測用量與 RAP 正式帳務
-- [ ] Chatbot 有獨立 Virtual Key
-- [ ] Virtual Key 僅能呼叫指定模型
+- [ ] Team A、Team B 與 Chatbot 各有獨立 Virtual Key
+- [ ] 各 Virtual Key 只能呼叫指定模型，且用量可正確歸屬
+- [ ] 已驗證 Team／Key 的 RPM、TPM、期限與可用的預算政策
 - [ ] 錯誤、撤銷、過期及限流測試符合預期
 - [ ] 日誌不含 Secret
 - [ ] 已記錄輪替與事件處理流程
