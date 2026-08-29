@@ -31,7 +31,8 @@
 4. 透過 LiteLLM 建立統一的模型 API Gateway。
 5. 為應用程式建立獨立金鑰、模型權限、流量限制與使用紀錄。
 6. 以需求提示詞引導 AI 建立 Next.js 全端 Chatbot，而不是單純複製完整程式碼。
-7. 使用 Cloudflare Tunnel 將正式服務安全發布到網際網路。
+7. 以 Prompt 完成 GitHub CLI 網頁授權、Secret 檢查與受控的版本交付。
+8. 使用 Cloudflare Tunnel 將正式服務安全發布到網際網路。
 
 ## 課程章節
 
@@ -41,7 +42,7 @@
 | [第 2 章](/guide/02_ssh_proxyjump_and_dev_env) | Antigravity Remote SSH、自然語言維運與 Ports 預覽 | 遠端工作區可操作，能安全預覽測試服務 |
 | [第 3 章](/guide/03_litellm_gateway) | LiteLLM 多模型 API Gateway | 以統一 Endpoint 呼叫國網及其他授權模型 |
 | [第 4 章](/guide/04_litellm_api_governance) | API 金鑰、權限、流量與服務治理 | 為 Chatbot 建立最小權限的專用憑證 |
-| [第 5 章](/guide/05_nextjs_chatbot_with_ai) | 用 AI 協作建立 Next.js 全端 Chatbot | 完成可串流回覆的 Chatbot，金鑰只留在後端 |
+| [第 5 章](/guide/05_nextjs_chatbot_with_ai) | 用 AI 協作建立 Next.js 全端 Chatbot | 完成串流 Chatbot，並以人工確認的 Prompt 流程交付到 GitHub |
 | [第 6 章](/guide/06_cloudflare_deployment) | Cloudflare Tunnel 與正式部署 | 以 HTTPS 網域持續提供受保護的 Chatbot |
 
 ### 課程附錄

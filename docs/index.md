@@ -22,7 +22,7 @@ features:
     details: 將國網與其他已授權模型統一為 OpenAI-compatible API，管理模型別名、Virtual Key、流量與使用紀錄。
   - icon: 💬
     title: AI 協作建立 Chatbot
-    details: 不貼整份範例程式碼，而是以需求、限制與驗收提示詞，引導 AI 完成 Next.js 全端 Chatbot。
+    details: 以需求、限制與驗收提示詞完成 Next.js 全端 Chatbot，再經 Secret 檢查與人工確認交付到 GitHub。
   - icon: 🔒
     title: 安全正式發布
     details: 開發時使用 Antigravity Ports；正式服務才使用 Production Build、Cloudflare Access 與 Tunnel。

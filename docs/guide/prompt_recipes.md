@@ -90,7 +90,18 @@
 > 另確認 RAP API入口金鑰只存在 LiteLLM、LiteLLM Master Key 只供管理者使用、Next.js 只持有最小權限 Virtual Key。
 > 不得執行會列出環境變數值或檔案內容的命令。只回報變數名稱、檔案位置、是否可能曝光與修正建議。發現疑似外洩時立即停下來，先建議撤銷與輪替。
 
-## 8. Recipe：Production 部署審查
+## 8. Recipe：GitHub 版本交付
+
+> 背景與現況：Chatbot 已通過 Lint、型別檢查、Production Build 與人工驗收，README 已使用假值說明環境變數。
+> 目標：把可重現的原始碼安全交付到 GitHub；本輪不部署服務。
+> 第一階段只做唯讀檢查：確認 Git 狀態、分支、Remote、.gitignore、差異、未追蹤檔案、大型檔案、Build 產物，以及 .env、金鑰、憑證或日誌的洩漏風險。不得讀取或顯示 Secret 值。
+> 登入限制：未登入時使用 GitHub CLI 官方 Web／Device Flow；到瀏覽器授權步驟立即暫停，由我親自完成。不得要求我提供密碼、Token、Cookie 或裝置碼。
+> 外部變更限制：建立 Repository 前先詢問擁有者、名稱及 Public／Private；已有 Remote 時不得覆寫。Stage 前列出明確檔案，Commit 與 Push 各自等待確認。
+> 禁止事項：不得使用 git add .、Force Push、改寫歷史、刪除分支、猜測 Repository 可見性或提交 Secret。
+> 驗收：GitHub 網頁上的擁有者、可見性、分支、最新 Commit、檔案與 README 均符合預期，且沒有 .env、Secret、日誌或 Build 產物。
+> 請先提出分階段計畫、每一個人工確認點與失敗後的安全處理方式，不要執行。
+
+## 9. Recipe：Production 部署審查
 
 > 背景與現況：開發版已透過 Antigravity Ports 完成聯調。
 > 目標：將 Next.js、LiteLLM 與 PostgreSQL 以可重現方式部署，並只透過 Cloudflare Access／Tunnel 公開 Chatbot。
@@ -99,7 +110,7 @@
 > 驗收：健康檢查、未登入阻擋、登入後 SSE、VM 重啟自動恢復、日誌遮蔽、備份與回復演練。
 > 先提出部署差異、停機風險、回復計畫與驗收順序，不要執行。
 
-## 9. Recipe：分層故障診斷
+## 10. Recipe：分層故障診斷
 
 > 使用者看到的現象：[錯誤訊息與發生時間]。
 > 最近變更：[版本、設定或部署差異]。
@@ -107,7 +118,7 @@
 > 優先執行唯讀檢查；任何重啟、設定修改、Rollback 或資料操作前先說明影響並等待確認。
 > 回報格式：時間線、已驗證事實、尚未驗證項目、最可能原因、下一個最小測試、暫時緩解與永久修正。不得輸出 Secret 或完整敏感 Prompt。
 
-## 10. 送出 Prompt 前的人工檢查
+## 11. 送出 Prompt 前的人工檢查
 
 - [ ] 這一輪只有一個主要目標
 - [ ] 已提供必要背景，而不是要求 AI 猜測

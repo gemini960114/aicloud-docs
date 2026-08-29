@@ -143,7 +143,62 @@ Chatbot 顯示的是使用者訊息與最終回覆，不把模型內部推理包
 
 > 請更新 README，包含用途、架構、必要環境變數名稱、開發啟動、測試、正式 Build、停止與故障排除方式。只可使用假值，不得複製目前環境的 Secret。另列出尚未完成、上線前必須處理的安全事項。
 
-## 11. 本章完成條件
+## 11. 用 Prompt 完成 GitHub 版本交付
+
+Chatbot 通過驗收後，先把可重現的原始碼交付到 GitHub，再進入正式部署。本節仍由 Antigravity 協助操作，但「全程使用 Prompt」不代表把帳號控制權交給 AI：登入、Repository 公開範圍與首次 Push 都保留人工確認。
+
+### 11.1 先分清楚三種服務
+
+| 服務 | 本課程用途 | 不負責的工作 |
+| :--- | :--- | :--- |
+| GitHub Repository | 保存原始碼、Commit 與版本歷史 | 不直接執行本章的 Next.js 伺服器 |
+| GitHub Pages | 發布這份 VitePress 靜態教材 | 不代替需要 Node.js Runtime 的 Chatbot |
+| Cloudflare Tunnel | 在第 6 章將 VM 上的正式 Chatbot 對外服務 | 不代替 Git 版本管理 |
+
+### 11.2 第一輪：提交前唯讀檢查
+
+> 請先對目前 Chatbot 專案做唯讀的 Git 交付檢查，不要初始化 Repository、登入 GitHub、修改檔案、Stage、Commit 或 Push。確認目前分支、工作樹、既有 Remote、.gitignore、未追蹤檔案與變更摘要；檢查 .env、金鑰、憑證、日誌、Build 產物及大型檔案是否可能被提交。不得讀取或顯示 Secret 值，只回報檔名、風險類型與建議處理方式。最後列出預計交付的檔案、排除項目、指令計畫與需要我決定的事項。
+
+學員要先看懂 `git status` 與 `git diff` 摘要。發現疑似 Secret 時立即停止，不要用「刪掉那一行再提交」取代金鑰撤銷與輪替。
+
+### 11.3 第二輪：GitHub CLI 網頁授權
+
+> 請先確認 GitHub CLI 是否可用，並執行唯讀的登入狀態檢查。如果尚未登入，請使用 GitHub CLI 官方 Web／Device Flow 引導我登入；到需要開啟網址、輸入一次性裝置碼或核准權限時停下來，由我親自在瀏覽器完成。不得要求我把 GitHub 密碼、Token、Cookie、裝置碼或其他憑證貼進對話，也不得自行擴大授權範圍。完成後只回報登入帳號、Git Protocol 與必要權限是否符合，不顯示憑證。
+
+如果 VM 尚未安裝 `gh`，先請 AI 查閱 GitHub CLI 官方 Linux 安裝說明，列出套件來源、版本、需要 `sudo` 的原因與驗證方式，等待確認後才安裝；不得改用來源不明的一鍵安裝腳本。
+
+常見入口是 `gh auth login --web`。Remote SSH 環境不一定能自動開啟本機瀏覽器；此時由學員在自己的瀏覽器開啟 GitHub 顯示的網址並完成 Device Flow。裝置碼只輸入 GitHub 官方頁面，不貼回 Prompt。
+
+### 11.4 第三輪：建立或連結 Repository
+
+> 根據剛才的唯讀結果，提出 GitHub Repository 建立或連結計畫，但先不要執行。若已有正確 Remote，不得覆寫；若尚未建立 Repository，請先詢問名稱、擁有者以及 Public 或 Private。列出將使用的 gh 與 git 指令、預計 Push 的分支，以及 GitHub 上會發生的外部變更。禁止 Force Push、刪除分支、改寫歷史、提交 Secret 或未經確認建立公開 Repository。等我確認後，一次執行一個階段並立即驗證。
+
+Repository 的 Public／Private 是資料公開決策，不能讓 AI 猜測。若課堂統一建立公開 Repository，仍要在 Push 前完成 Secret 與授權資料檢查。
+
+### 11.5 第四輪：審閱、Commit 與 Push
+
+> 請重新顯示不含 Secret 的變更摘要，將檔案依用途分組，提出一則能描述本次成果的 Commit 訊息。不要直接使用 git add .；先列出準備 Stage 的明確路徑，等我確認後才 Stage。Stage 後再次檢查差異與敏感資訊，再等我確認才 Commit。Push 前說明 GitHub Repository、Remote、分支與可見性；取得最後確認後才 Push。不得使用 --force、不得略過檢查，也不得在失敗時改寫歷史。
+
+### 11.6 GitHub 網頁驗收
+
+Push 成功不等於交付完成。學員要親自在 GitHub 網頁確認：
+
+- Repository 擁有者、名稱與 Public／Private 符合決定。
+- 預期分支與最新 Commit 已出現。
+- README 能讓另一位學員重建與啟動專案。
+- `.env`、真正金鑰、日誌、Build 產物與個人資料沒有出現。
+- GitHub 顯示的檔案範圍與 AI 提交摘要一致。
+
+若 GitHub 網頁出現 Secret，應先撤銷並輪替憑證，再處理 Git 歷史；不能只新增一個後續 Commit 把檔案刪掉。
+
+### 11.7 官方文件
+
+- [GitHub CLI：Linux 安裝方式](https://github.com/cli/cli/blob/trunk/docs/install_linux.md)
+- [GitHub CLI：`gh auth login`](https://cli.github.com/manual/gh_auth_login)
+- [GitHub CLI：`gh repo create`](https://cli.github.com/manual/gh_repo_create)
+- [GitHub Docs：移除 Repository 中的敏感資料](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/removing-sensitive-data-from-a-repository)
+
+## 12. 本章完成條件
 
 - [ ] Next.js 前後端位於同一專案
 - [ ] 瀏覽器只呼叫 `/api/chat`
@@ -154,5 +209,9 @@ Chatbot 顯示的是使用者訊息與最終回覆，不把模型內部推理包
 - [ ] Antigravity Ports 可預覽 `localhost:3000`
 - [ ] Lint、型別檢查及 Production Build 成功
 - [ ] README 不含真正 Secret
+- [ ] 已用唯讀 Prompt 檢查 Git 差異、.gitignore 與 Secret 風險
+- [ ] GitHub Web／Device Flow 由學員親自完成
+- [ ] Repository 可見性、Stage、Commit 與首次 Push 均經人工確認
+- [ ] 已從 GitHub 網頁確認檔案、分支與 Commit
 
 下一章會把開發預覽轉為 [Cloudflare Tunnel 正式服務](/guide/06_cloudflare_deployment)。需要設計或診斷 Prompt 時，可回到[提示詞模板庫](/guide/prompt_recipes)。
