@@ -88,13 +88,13 @@ uname -a
 
 > 請只做唯讀檢查：確認作業系統版本、CPU、記憶體、磁碟、目前使用者、網路連線，以及 Git、curl、Docker、Node.js、npm 是否已安裝。請整理成表格，不要安裝或修改任何內容，也不要輸出任何環境變數的值。
 
-接著要求規劃：
+接著把系統更新與工具安裝分開規劃：
 
-> 根據檢查結果，提出安裝 Git、curl、Docker Engine、Docker Compose plugin、Node.js LTS 與 npm 的計畫。列出套件來源、將執行的指令、需要 sudo 的原因、可能影響及每一步驗證方式。暫時不要執行。
+> 根據檢查結果，先判斷系統是否需要更新，再另外提出安裝 Git、curl、Docker Engine、Docker Compose plugin、Node.js LTS、npm 與 uv 的計畫。請將兩個階段分開，列出套件來源、預計指令、需要 sudo 的原因、可能影響及每一步驗證方式。暫時不要執行。
 
 確認計畫後才授權：
 
-> 我已審閱計畫。請一次只執行一個階段，每階段完成後驗證版本與服務狀態，再等待我確認下一階段。不要修改 SSH、安全群組、防火牆或公開任何 Port。
+> 我已審閱計畫。請先依下一節完成健康檢查與經我確認的系統更新，再進行工具安裝。一次只執行一個階段，每階段完成後驗證結果並等待我確認下一階段。不要修改 SSH、安全群組、防火牆或公開任何 Port。
 
 ### AI 操作的停損點
 
@@ -108,7 +108,38 @@ uname -a
 - 調整防火牆、監聽位址或公開服務
 - 執行來源不明的遠端安裝腳本
 
-## 4. 本課程需要的工具
+## 4. 系統健康檢查與受控更新
+
+Remote SSH 成功後，先建立系統基準，再決定是否更新。新 VM 不代表一定要立刻執行完整升級；若課堂使用講師已驗證的映像，應先確認更新是否會改變核心、Docker 或其他服務版本。
+
+### 第一輪：唯讀健康檢查
+
+> 請先做唯讀健康檢查，不要安裝、升級、清除或重新啟動。確認 Ubuntu 版本、核心、開機時間、CPU、記憶體、根目錄磁碟空間、套件管理鎖定狀態、失敗的 systemd 服務，以及是否存在 reboot-required。請將已驗證事實、異常與建議順序分開列出，不得輸出環境變數、憑證或 Shell History。
+
+### 第二輪：提出更新計畫
+
+> 根據健康檢查，提出系統更新計畫。先說明更新套件索引、列出可升級套件、執行升級、清理套件與重新開機各自的影響；指出可能重新啟動的服務及 SSH 中斷風險。這一輪不要執行，等我確認後一次進行一個階段。
+
+執行時遵守：
+
+- 更新套件索引後，先顯示套件數量與重要變更摘要。
+- 完整升級、`autoremove`、清理快取與重新開機分別確認。
+- 不使用一條 One-Liner 串起所有管理操作。
+- 不用 `DEBIAN_FRONTEND=noninteractive` 隱藏需要判斷的提示。
+- 不因磁碟空間正常就執行 `apt clean`。
+- 重新開機前先保存工作並確認可以重新建立 SSH 連線。
+
+重新連線後再次確認：
+
+```bash
+uname -r
+df -h /
+systemctl --failed
+```
+
+另驗證 DNS、外部 HTTPS 與 SSH 均正常，再進入工具安裝。
+
+## 5. 本課程需要的工具
 
 後續章節需要：
 
@@ -118,8 +149,17 @@ uname -a
 - Docker Compose plugin
 - Node.js LTS
 - npm
+- uv
 
 版本不應寫死在教材中。由 AI 查詢已安裝版本，並依官方支援方式安裝當期 LTS 或課程指定版本。
+
+`uv` 提供輕量且隔離的 Python 執行與套件管理環境，供 API 測試、維運腳本及延伸實驗使用。主課程的 LiteLLM 仍以容器部署，因此本章不另外安裝 Conda、Miniforge，也不預先安裝多套 Python。
+
+### uv 安裝提示詞
+
+> 請先檢查 uv 是否已安裝、目前 CPU 架構、PATH 與可用的 Python。查閱 uv 官方安裝文件，比較 standalone installer 與隔離安裝方式，提出課程指定版本、安裝位置、PATH 變更及驗證方法，暫時不要執行。不得同時安裝 Conda、Miniforge 或多個 Python 版本。等我確認後才安裝，最後執行 uv --version，並確認重新登入後仍可使用。
+
+使用 [uv 官方安裝文件](https://docs.astral.sh/uv/getting-started/installation/) 核對當期方式。若選用遠端安裝腳本，AI 必須先說明官方來源、版本與將修改的位置，不能看到 `curl | sh` 就直接執行。
 
 安裝後至少驗證：
 
@@ -130,12 +170,13 @@ docker --version
 docker compose version
 node --version
 npm --version
+uv --version
 sudo systemctl is-active docker
 ```
 
 若將使用者加入 Docker 群組，要說明該群組具有接近 root 的主機控制能力，並重新登入使群組生效。
 
-## 5. 建立安全的課程工作目錄
+## 6. 建立安全的課程工作目錄
 
 ```text
 ~/aicloud-course/
@@ -153,7 +194,7 @@ sudo systemctl is-active docker
 
 真正的 `.env` 與金鑰不得加入 Git。
 
-## 6. 使用 Antigravity Ports 預覽遠端 localhost
+## 7. 使用 Antigravity Ports 預覽遠端 localhost
 
 當遠端 VM 上的服務監聽 `localhost:3000` 或 `localhost:4000` 時，Antigravity Remote SSH 可以透過 **Ports** 功能讓學員在個人瀏覽器查看。
 
@@ -185,7 +226,7 @@ Antigravity Ports 適合個人開發與課堂驗證，但不應視為對外服�
 
 正式發布會在第 6 章使用 Cloudflare Tunnel。
 
-## 7. 練習：請 AI 建立一次性測試服務
+## 8. 練習：請 AI 建立一次性測試服務
 
 不要提供完整程式碼，改用需求提示詞：
 
@@ -197,12 +238,13 @@ Antigravity Ports 適合個人開發與課堂驗證，但不應視為對外服�
 遠端 localhost → Antigravity Ports → 個人瀏覽器
 ```
 
-## 8. 本章完成條件
+## 9. 本章完成條件
 
 - [ ] Antigravity Remote SSH 連線成功
 - [ ] 能辨認終端機正在操作遠端 VM
 - [ ] AI 已先檢查、再規劃、經確認後才安裝
-- [ ] Git、Docker、Node.js 與 npm 驗證成功
+- [ ] 已完成健康檢查，更新與重新開機均經分階段確認
+- [ ] Git、Docker、Node.js、npm 與 uv 驗證成功
 - [ ] 能透過 Antigravity Ports 預覽遠端 localhost
 - [ ] 沒有為開發服務新增公開 Ingress 規則
 

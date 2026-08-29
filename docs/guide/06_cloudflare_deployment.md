@@ -72,21 +72,50 @@ PostgreSQL         不發布主機 Port
 
 可以先透過 Antigravity Ports 預覽 3000，確認 Production 版本無誤，再設定 Cloudflare。
 
-## 5. 建立具名 Cloudflare Tunnel
+## 5. 為什麼本課程不使用 Quick Tunnel
 
-在 Cloudflare Zero Trust 建立具名 Tunnel，依後台顯示的當期指令安裝 `cloudflared` Connector。不要把 Tunnel Token 寫進教材、Shell History、Git 或截圖。
+Quick Tunnel 會產生隨機的 `trycloudflare.com` 網址，適合短暫測試一般 HTTP 服務，但不是本課程的開發預覽或正式發布方案。
 
-Public Hostname 建議：
+依 [Cloudflare Quick Tunnel 官方文件](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/do-more-with-tunnels/trycloudflare/)：
 
-| 欄位 | 值 |
-| :--- | :--- |
-| Hostname | `chat.<你的網域>` |
-| Service | `http://127.0.0.1:3000` |
-| 對外協定 | HTTPS |
+- 只供測試與開發使用。
+- 同時進行中的請求有數量限制，超過時會回傳 429。
+- 不支援 Server-Sent Events（SSE）。
+
+本課程 Chatbot 需要 SSE 串流，因此開發時使用 Antigravity Ports，正式發布使用具名 Cloudflare Tunnel，不執行 `cloudflared tunnel --url ...`。
+
+## 6. 安裝與驗證 cloudflared
+
+不要讓 AI 直接下載永遠指向 `latest` 的套件。先確認 VM 架構、現有版本、官方安裝來源與課程指定版本：
+
+> 請確認 CPU 架構、作業系統與 cloudflared 現有版本，再依 Cloudflare 官方文件提出安裝或升級計畫。說明套件來源、版本、需要 sudo 的原因、將建立的 systemd 服務、驗證與回復方式，先不要下載或安裝。不得使用來源不明的套件，也不得在輸出中顯示 Tunnel Token。
+
+安裝二進位檔後先驗證：
+
+```bash
+cloudflared --version
+```
+
+## 7. 建立具名 Cloudflare Tunnel
+
+在 Cloudflare Zero Trust 建立具名 Tunnel，依後台顯示的當期指令安裝 `cloudflared` Connector。AI 操作到後台產生 Connector 指令時必須暫停，由學員親自在遠端終端機完成含 Token 的步驟。
+
+Tunnel Token 不得放入 Prompt、Git、README、截圖、共用 Shell History 或 AI 執行日誌。若曾出現在不可信位置，先從 Cloudflare 後台輪替，再繼續部署。完成 Connector 安裝後，AI 只檢查版本、systemd 狀態與不含 Secret 的連線結果。
+
+Connector 安裝成 systemd 服務後再驗證：
+
+```bash
+sudo systemctl status cloudflared --no-pager
+sudo journalctl -u cloudflared --since "10 minutes ago" --no-pager
+```
+
+`systemctl status` 與日誌用來判斷 Connector 是否啟動及連線，不把日誌中的識別資訊、Hostname 或其他敏感資料整段貼回 Prompt。只有在理解影響後才執行 `restart`。
+
+先確認 Tunnel 顯示健康，再進入 Access 與 Published Application Route 設定；不要急著建立一個無驗證的公開網址。
 
 Cloudflare Tunnel 由 VM 主動連出，因此通常不需要開放晶創雲 80、443 或 3000 Ingress；但 Egress、DNS 與專案網路政策仍需允許 Connector 連線。
 
-## 6. 先設定 Access，再邀請使用者
+## 8. 先設定 Access，再發布 Hostname
 
 建立 Access Application 與最小允許政策，例如：
 
@@ -96,9 +125,19 @@ Cloudflare Tunnel 由 VM 主動連出，因此通常不需要開放晶創雲 80�
 - 管理者與一般使用者分離
 - 拒絕規則優先於寬鬆允許規則
 
+接著才建立 Chatbot 的 Published Application Route：
+
+| 欄位 | 值 |
+| :--- | :--- |
+| Hostname | `chat.<你的網域>` |
+| Service | `http://127.0.0.1:3000` |
+| 對外協定 | HTTPS |
+
+將 Access 與 Hostname 視為同一個受控發布階段，儲存後立即用未登入瀏覽器測試應被阻擋，再登入測試首頁、一般回覆與 SSE。Cloudflare 官方提醒，只有 Tunnel Route 而沒有 Access Application 時，網際網路使用者可能直接存取該 Hostname；請參考[具名 Tunnel 官方流程](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/get-started/create-remote-tunnel/)。
+
 Cloudflare Access 保護「誰能進入 Chatbot」；Next.js 與 LiteLLM 仍需各自的 Session、Virtual Key、Rate Limit 與日誌政策。
 
-## 7. 不建議公開 LiteLLM API
+## 9. 不建議公開 LiteLLM API
 
 主課程架構中，外部使用者只需要 Chatbot，不需直接呼叫 LiteLLM。
 
@@ -115,11 +154,11 @@ Cloudflare Access 保護「誰能進入 Chatbot」；Next.js 與 LiteLLM 仍需�
 
 不允許把 LiteLLM Master Key 提供給外部應用。
 
-## 8. 請 Antigravity 協助部署與驗證
+## 10. 請 Antigravity 協助部署與驗證
 
-> 請依已確認的正式部署計畫執行。每次只變更一個服務，先備份可回復的設定並顯示不含 Secret 的差異。完成後驗證 Compose 狀態、健康檢查、localhost 存取、Cloudflare Tunnel、Access 未登入阻擋、登入後 Chatbot 串流，以及 VM 重啟後自動恢復。不得輸出 Tunnel Token、API Key、Cookie 或資料庫密碼。
+> 請依已確認的正式部署計畫執行。每次只變更一個服務，先備份可回復的設定並顯示不含 Secret 的差異。到 Cloudflare Connector Token 步驟時停止，由我親自在終端機完成。其餘完成後驗證 Compose 狀態、健康檢查、localhost 存取、cloudflared 服務、Access 未登入阻擋、登入後 Chatbot 串流，以及 VM 重啟後自動恢復。不得使用 Quick Tunnel，不得輸出 Tunnel Token、API Key、Cookie 或資料庫密碼。
 
-## 9. 故障定位順序
+## 11. 故障定位順序
 
 ```text
 瀏覽器
@@ -146,7 +185,7 @@ LiteLLM
 
 不要一遇到錯誤就刪除整個部署或開放所有 Port。
 
-## 10. 上線後與課後清理
+## 12. 上線後與課後清理
 
 上線後至少檢查：
 
@@ -165,11 +204,14 @@ LiteLLM
 5. 檢查晶創雲是否仍有計費資源。
 6. 保存不含 Secret 的架構、設定範本與學習紀錄。
 
-## 11. 全課程完成條件
+## 13. 全課程完成條件
 
 - [ ] Antigravity Ports 可做私人開發預覽
 - [ ] Next.js 使用 Production Build
 - [ ] LiteLLM 與 PostgreSQL 未直接公開
+- [ ] 沒有使用不支援 SSE 的 Quick Tunnel
+- [ ] cloudflared 版本、systemd 狀態與近期日誌已驗證
+- [ ] Tunnel Token 由學員親自處理，未進入 Prompt、Git 或截圖
 - [ ] Cloudflare Tunnel 只指向必要服務
 - [ ] Cloudflare Access 已驗證未登入與已登入情境
 - [ ] VM 重啟後服務自動恢復

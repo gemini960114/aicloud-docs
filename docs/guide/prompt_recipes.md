@@ -43,11 +43,19 @@
 
 > 背景與現況：我剛透過 Antigravity Remote SSH 連上晶創雲 VM，目前不確定環境狀態。
 > 目標：建立一份不修改系統的環境盤點。
-> 請檢查作業系統、核心、CPU、記憶體、磁碟、目前使用者、群組、IP、DNS、外部 HTTPS 連線，以及 Git、curl、Docker、Docker Compose、Node.js、npm 的版本與服務狀態。
+> 請檢查作業系統、核心、CPU、記憶體、磁碟、目前使用者、群組、IP、DNS、外部 HTTPS 連線，以及 Git、curl、Docker、Docker Compose、Node.js、npm、uv 的版本與服務狀態。
 > 安全限制：不得讀取或輸出環境變數值、SSH key、Token、Cookie、.env 或 Shell History。
 > 驗收：將實際檢查結果、缺少工具與異常分開列出。這一輪不得安裝或修改任何內容。
 
-## 3. Recipe：變更前安裝計畫
+## 3. Recipe：受控系統更新
+
+> 背景與現況：我已透過 Remote SSH 連入課程 VM，目前尚未決定是否需要完整升級。
+> 第一階段只做唯讀健康檢查：確認 Ubuntu、核心、開機時間、磁碟、套件管理鎖定、失敗的 systemd 服務與 reboot-required；不得安裝、升級、清除或重新啟動。
+> 第二階段提出計畫：分別說明更新套件索引、可升級套件、完整升級、autoremove、快取清理與重新開機的影響，以及可能重新啟動的服務。
+> 執行限制：每個階段都等待我確認；不得使用 One-Liner 串接全部操作，不得以 noninteractive 隱藏提示，也不得自動重新開機。
+> 驗收：重新連線後確認核心、磁碟、失敗服務、DNS、外部 HTTPS 與 SSH，並分開回報已完成、略過與仍需處理的項目。
+
+## 4. Recipe：變更前安裝計畫
 
 > 背景與現況：[貼上不含敏感資訊的盤點摘要]。
 > 目標：安裝 [工具名稱與課程指定版本策略]。
@@ -55,7 +63,7 @@
 > 禁止事項：不得使用來源不明的安裝腳本，不得修改 SSH、防火牆或公開 Port。
 > 執行節奏：先提出計畫，不要執行；等我確認後一次完成一個階段。
 
-## 4. Recipe：TAIWAN AI RAP 與 LiteLLM Gateway
+## 5. Recipe：TAIWAN AI RAP 與 LiteLLM Gateway
 
 > 背景與現況：我已在 TAIWAN AI RAP Lightweight Portal 選擇正確計畫，API Base URL、API入口金鑰與 Model ID 會由我透過遠端終端機設定為環境變數。
 > 目標：建立只監聽 127.0.0.1:4000 的 LiteLLM Gateway，並把實際 RAP 模型映射成 nchc-chat。
@@ -64,7 +72,7 @@
 > 驗收：正確請求成功，錯誤 Key、錯誤模型與上游中斷均有明確結果，重啟後設定仍存在。
 > 請先列出資料流、檔案清單、版本路徑風險、測試矩陣及回復方法，不要建立檔案。
 
-## 5. Recipe：Next.js Chatbot 規格
+## 6. Recipe：Next.js Chatbot 規格
 
 > 背景與現況：LiteLLM 的 nchc-chat 已通過非串流與 SSE 測試。
 > 目標：在 [專案目錄] 建立 Next.js 全端 Chatbot。
@@ -74,7 +82,7 @@
 > 驗收：Lint、型別檢查與 Production Build 成功；前端 Bundle、Git 與日誌不含 Secret；錯誤 Key、模型不存在、上游逾時與使用者取消皆有測試。
 > 請先提出架構、檔案清單、資料流與測試計畫，不要寫程式碼。
 
-## 6. Recipe：SSE 串流除錯
+## 7. Recipe：SSE 串流除錯
 
 > 現象：[描述實際畫面、HTTP 狀態與何時中斷，不要只寫「不能用」]。
 > 已驗證：[列出 RAP、LiteLLM、Next.js 各層已完成的測試]。
@@ -83,14 +91,14 @@
 > 禁止事項：不得同時修改前端、後端與 Gateway；不得把關閉驗證、停用 TLS 或公開 Port 當作解法。
 > 輸出：分開列出已驗證事實、推測、下一個最小測試，以及該測試如何證明或排除假設。
 
-## 7. Recipe：Secret 與權限檢查
+## 8. Recipe：Secret 與權限檢查
 
 > 目標：在不顯示 Secret 值的前提下，檢查專案是否可能洩漏憑證。
 > 請檢查 Git 追蹤檔案、.gitignore、前端 Bundle、NEXT_PUBLIC_*、容器映像建置內容、Compose 設定、應用日誌、錯誤回應與瀏覽器 Network Request。
 > 另確認 TAIWAN AI RAP API入口金鑰只存在 LiteLLM、LiteLLM Master Key 只供管理者使用、Next.js 只持有最小權限 Virtual Key。
 > 不得執行會列出環境變數值或檔案內容的命令。只回報變數名稱、檔案位置、是否可能曝光與修正建議。發現疑似外洩時立即停下來，先建議撤銷與輪替。
 
-## 8. Recipe：GitHub 版本交付
+## 9. Recipe：GitHub 版本交付
 
 > 背景與現況：Chatbot 已通過 Lint、型別檢查、Production Build 與人工驗收，README 已使用假值說明環境變數。
 > 目標：把可重現的原始碼安全交付到 GitHub；本輪不部署服務。
@@ -101,16 +109,17 @@
 > 驗收：GitHub 網頁上的擁有者、可見性、分支、最新 Commit、檔案與 README 均符合預期，且沒有 .env、Secret、日誌或 Build 產物。
 > 請先提出分階段計畫、每一個人工確認點與失敗後的安全處理方式，不要執行。
 
-## 9. Recipe：Production 部署審查
+## 10. Recipe：Production 部署審查
 
 > 背景與現況：開發版已透過 Antigravity Ports 完成聯調。
 > 目標：將 Next.js、LiteLLM 與 PostgreSQL 以可重現方式部署，並只透過 Cloudflare Access／Tunnel 公開 Chatbot。
 > 技術限制：Next.js 使用 Production Build 與 Node.js Runtime，不使用開發伺服器或純靜態匯出；容器內以 service name 連線；PostgreSQL 不發布主機 Port。
-> 安全限制：LiteLLM Admin UI、4000 Port、資料庫與任何 Secret 不可公開；Cloudflare Public Hostname 只指向 Chatbot。
-> 驗收：健康檢查、未登入阻擋、登入後 SSE、VM 重啟自動恢復、日誌遮蔽、備份與回復演練。
+> 安全限制：LiteLLM Admin UI、4000 Port、資料庫與任何 Secret 不可公開；不得使用不支援 SSE 的 Quick Tunnel；具名 Tunnel 的 Connector Token 由我親自在終端機處理，不得進入 Prompt、Git、截圖或共用 Shell History。
+> 發布順序：先完成 localhost 驗收與 cloudflared 安裝檢查，再建立具名 Tunnel、Access Application 及最小允許政策，最後才建立只指向 Chatbot 的 Published Application Route。
+> 驗收：cloudflared 服務健康、未登入阻擋、登入後 SSE、VM 重啟自動恢復、日誌遮蔽、備份與回復演練。
 > 先提出部署差異、停機風險、回復計畫與驗收順序，不要執行。
 
-## 10. Recipe：分層故障診斷
+## 11. Recipe：分層故障診斷
 
 > 使用者看到的現象：[錯誤訊息與發生時間]。
 > 最近變更：[版本、設定或部署差異]。
@@ -118,7 +127,7 @@
 > 優先執行唯讀檢查；任何重啟、設定修改、Rollback 或資料操作前先說明影響並等待確認。
 > 回報格式：時間線、已驗證事實、尚未驗證項目、最可能原因、下一個最小測試、暫時緩解與永久修正。不得輸出 Secret 或完整敏感 Prompt。
 
-## 11. 送出 Prompt 前的人工檢查
+## 12. 送出 Prompt 前的人工檢查
 
 - [ ] 這一輪只有一個主要目標
 - [ ] 已提供必要背景，而不是要求 AI 猜測
