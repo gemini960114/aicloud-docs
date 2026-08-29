@@ -30,7 +30,37 @@ LiteLLM 的 Virtual Key、使用者／團隊與預算管理需要資料庫。課
 
 詳細需求與版本差異請參考 [LiteLLM Virtual Keys](https://docs.litellm.ai/docs/proxy/virtual_keys) 與官方預算文件。課程使用的資料庫密碼同樣只能放在伺服器端 Secret。
 
-## 3. 為 Chatbot 建立專用 Virtual Key
+## 3. 受控示範 LiteLLM Admin UI
+
+LiteLLM Admin UI 適合把抽象的模型、金鑰與用量治理轉成可視化操作，但它是**管理介面**，不是一般學員或外部使用者的入口。
+
+示範前先確認：
+
+- LiteLLM 已啟用管理者驗證。
+- PostgreSQL 已連線，重啟後治理資料仍存在。
+- 使用無敏感資訊的測試 Prompt。
+- 只透過 Antigravity Ports 私人預覽遠端 4000。
+- 不在晶創雲開放 4000，也不建立指向 Admin UI 的 Cloudflare Public Hostname。
+
+課堂可示範：
+
+1. 查看課程定義的模型別名。
+2. 建立一組只能呼叫 `nchc-chat` 的測試 Virtual Key。
+3. 觀察請求狀態、Token、延遲及錯誤。
+4. 修改模型權限或流量限制，執行正向與負向測試。
+5. 撤銷測試 Key，確認它立即失效。
+
+### 成本欄位的限制
+
+Admin UI 顯示的金額取決於 LiteLLM 是否有該模型的正確價格資料，以及自訂模型是否已配置成本。RAP 模型若沒有可靠的成本對照，教材只能把畫面解讀為 **Token／請求／延遲等使用量觀測**，不得把估算金額當成國網正式帳務；正式餘額與用量仍以 RAP Portal 為準。
+
+示範完成後：
+
+- 撤銷臨時 Key。
+- 關閉 4000 的 Antigravity Port 預覽。
+- 檢查截圖與學習紀錄沒有 Secret、完整 Prompt 或個人資料。
+
+## 4. 為 Chatbot 建立專用 Virtual Key
 
 建議權限：
 
@@ -57,7 +87,7 @@ Next.js 只取得 LiteLLM Virtual Key；RAP API入口金鑰只存在 LiteLLM 環
 
 > 請依 LiteLLM 官方文件規劃一組給 course-chatbot-dev 使用的 Virtual Key。它只能呼叫 nchc-chat，需有到期時間、保守的 RPM／TPM，並可被獨立撤銷。先列出管理 API 操作、必要前提與驗證方法，不要顯示 Master Key，也不要執行。
 
-## 4. 權限與限制的驗收矩陣
+## 5. 權限與限制的驗收矩陣
 
 | 測試 | 預期結果 |
 | :--- | :--- |
@@ -70,7 +100,7 @@ Next.js 只取得 LiteLLM Virtual Key；RAP API入口金鑰只存在 LiteLLM 環
 
 課堂上應真的執行負向測試，不能只測成功路徑。
 
-## 5. 模型路由與備援
+## 6. 模型路由與備援
 
 Fallback 不等於永遠重試。先依失敗類型決定行為：
 
@@ -88,7 +118,7 @@ Fallback 不等於永遠重試。先依失敗類型決定行為：
 - 費率與 Token 計算能否正確記錄
 - Streaming 與錯誤行為是否一致
 
-## 6. 日誌與隱私
+## 7. 日誌與隱私
 
 至少記錄：
 
@@ -111,7 +141,7 @@ Fallback 不等於永遠重試。先依失敗類型決定行為：
 
 若教學需要觀察 Prompt，使用無敏感資料的測試內容，並說明保存期限與可存取人員。
 
-## 7. 金鑰生命週期
+## 8. 金鑰生命週期
 
 ```text
 建立 → 發給單一應用 → 監控 → 定期輪替 → 撤銷 → 驗證不可再使用
@@ -127,15 +157,17 @@ Fallback 不等於永遠重試。先依失敗類型決定行為：
 
 任何上游供應商的 API Key 都應只透過後端保存及呼叫，不得部署到瀏覽器或提交版本控制。
 
-## 8. 請 Antigravity 產生治理報告
+## 9. 請 Antigravity 產生治理報告
 
 > 請在不讀取或顯示任何 Secret 的前提下，檢查目前 LiteLLM 的治理設定。請回報：資料庫持久化、模型別名、Virtual Key 權限、到期時間、RPM／TPM、預算、日誌遮蔽、備援條件及撤銷流程。將已驗證事實、推測及尚未設定項目分開列出，並提出負向測試清單。先不要修改設定。
 
 這份報告應放入 `notes/`，但不得包含 Key、完整 Prompt 或個人資料。
 
-## 9. 本章完成條件
+## 10. 本章完成條件
 
 - [ ] PostgreSQL 與 LiteLLM 治理資料可持久化
+- [ ] Admin UI 只透過 Antigravity Ports 私人預覽
+- [ ] 能區分觀測用量與 RAP 正式帳務
 - [ ] Chatbot 有獨立 Virtual Key
 - [ ] Virtual Key 僅能呼叫指定模型
 - [ ] 錯誤、撤銷、過期及限流測試符合預期

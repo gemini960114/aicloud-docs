@@ -1,6 +1,6 @@
 # 第 5 章：用 AI 協作建立 Next.js 全端 Chatbot
 
-本章不提供一份讓學員整段貼上的完整程式碼。學員會把需求、架構限制與驗收條件交給 Antigravity，審閱它的計畫與變更，再透過測試逐步完成 Chatbot。
+本章不提供一份讓學員整段貼上的完整程式碼。學員會把需求、架構限制與驗收條件交給 Antigravity，審閱它的計畫與變更，再透過測試逐步完成 Chatbot。可搭配[AI 協作提示詞模板庫](/guide/prompt_recipes)改寫適合自己環境的 Prompt。
 
 ## 1. 為什麼選擇 Next.js 全端架構
 
@@ -102,7 +102,31 @@ Chatbot 顯示的是使用者訊息與最終回覆，不把模型內部推理包
 - Cloudflare Quick Tunnel
 - 將 Next.js 監聽到公網介面
 
-## 8. 測試提示詞
+## 8. 全端聯調矩陣
+
+不要一開始就只用瀏覽器測完整鏈路。依序確認每一層，才能知道錯誤發生在哪裡：
+
+| 層級 | 測試方式 | 成功訊號 | 常見失敗 |
+| :--- | :--- | :--- | :--- |
+| RAP | 從 VM 直接測 `GET /models` 與 Chat Completions | 可用模型及回覆正常 | API入口金鑰、餘額、Model ID、Base URL |
+| LiteLLM → RAP | 從 VM 呼叫 `nchc-chat` | 非串流與 SSE 都正常 | Provider 前綴、版本路徑、上游參數 |
+| Next.js → LiteLLM | 從 VM 呼叫 `/api/chat` | 後端可取得串流 | Virtual Key、環境變數、容器網路 |
+| Browser → Next.js | Antigravity Ports 預覽 3000 | UI 逐步顯示同一則回覆 | 前端串流解析、取消、錯誤狀態 |
+
+### 必做失敗情境
+
+- 使用錯誤 LiteLLM Virtual Key。
+- 使用不存在或未授權的模型別名。
+- 暫停 LiteLLM，再呼叫 Next.js。
+- 模擬 RAP Timeout 或上游錯誤。
+- 串流途中按下停止。
+- 完成後恢復服務，確認不需重建整個專案。
+
+### 聯調提示詞
+
+> 請依 RAP → LiteLLM → Next.js API → Browser 的順序進行聯調。每次只測相鄰兩層，先記錄 HTTP 狀態、Content-Type、Request ID、首段回覆延遲與串流是否正常結束，再決定下一步。不得同時修改多層設定，也不得輸出 Authorization、Cookie、API Key 或完整敏感 Prompt。若失敗，請區分已驗證事實、推測原因與下一個最小測試。
+
+## 9. 測試提示詞
 
 > 請為目前 Chatbot 建立一份驗收清單並逐項測試：首頁載入、空白輸入、一般串流、連續兩次提問、使用者取消、錯誤 Virtual Key、不存在模型、LiteLLM 停止、上游逾時、行動裝置寬度，以及前端 Bundle／Git 中是否出現 Secret。測試前先說明會改變哪些狀態；不得顯示任何金鑰值。
 
@@ -115,18 +139,20 @@ Chatbot 顯示的是使用者訊息與最終回覆，不把模型內部推理包
 - 停止 LiteLLM 後，Chatbot 顯示安全且可理解的錯誤。
 - 重新啟動 LiteLLM 後，Chatbot 可以恢復。
 
-## 9. 最後請 AI 整理交付文件
+## 10. 最後請 AI 整理交付文件
 
 > 請更新 README，包含用途、架構、必要環境變數名稱、開發啟動、測試、正式 Build、停止與故障排除方式。只可使用假值，不得複製目前環境的 Secret。另列出尚未完成、上線前必須處理的安全事項。
 
-## 10. 本章完成條件
+## 11. 本章完成條件
 
 - [ ] Next.js 前後端位於同一專案
 - [ ] 瀏覽器只呼叫 `/api/chat`
 - [ ] LiteLLM Virtual Key 只存在伺服器端
 - [ ] 串流、取消與錯誤處理驗證成功
+- [ ] 已依 RAP → LiteLLM → Next.js → Browser 完成分層聯調
+- [ ] 已完成錯誤 Key、錯誤模型、服務中斷與上游逾時測試
 - [ ] Antigravity Ports 可預覽 `localhost:3000`
 - [ ] Lint、型別檢查及 Production Build 成功
 - [ ] README 不含真正 Secret
 
-下一章會把開發預覽轉為 [Cloudflare Tunnel 正式服務](/guide/06_cloudflare_deployment)。
+下一章會把開發預覽轉為 [Cloudflare Tunnel 正式服務](/guide/06_cloudflare_deployment)。需要設計或診斷 Prompt 時，可回到[提示詞模板庫](/guide/prompt_recipes)。

@@ -21,7 +21,8 @@ export default defineConfig({
           { text: '🔀 第 3 章：LiteLLM 多模型 Gateway', link: '/guide/03_litellm_gateway' },
           { text: '🛡️ 第 4 章：API 權限與服務治理', link: '/guide/04_litellm_api_governance' },
           { text: '💬 第 5 章：AI 協作建立 Next.js Chatbot', link: '/guide/05_nextjs_chatbot_with_ai' },
-          { text: '🔒 第 6 章：Cloudflare 正式部署', link: '/guide/06_cloudflare_deployment' }
+          { text: '🔒 第 6 章：Cloudflare 正式部署', link: '/guide/06_cloudflare_deployment' },
+          { text: '🧩 附錄：AI 協作提示詞模板庫', link: '/guide/prompt_recipes' }
         ]
       }
     ],

@@ -44,6 +44,10 @@
 | [第 5 章](/guide/05_nextjs_chatbot_with_ai) | 用 AI 協作建立 Next.js 全端 Chatbot | 完成可串流回覆的 Chatbot，金鑰只留在後端 |
 | [第 6 章](/guide/06_cloudflare_deployment) | Cloudflare Tunnel 與正式部署 | 以 HTTPS 網域持續提供受保護的 Chatbot |
 
+### 課程附錄
+
+- [AI 協作提示詞模板庫](/guide/prompt_recipes)：把背景、目標、限制、驗收與停損點組合成可重複使用的 Prompt Recipe。
+
 ## 最終架構
 
 ```text
