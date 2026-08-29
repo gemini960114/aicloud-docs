@@ -1,52 +1,68 @@
-# 第 02 章：開發連線與極速全端環境篇
+# 第 02 章：遠端連線與 AI Agentic IDE 賦能篇
 
-在[第 01 章](file:///home/ubuntu/aicloud_agent_course/01_aicloud_infrastructure_setup.md)中，我們在國研院晶創雲建立了一台內網 CPU VM（例如私有 IP 為 `10.0.0.99`）。  
-本章將完成兩大目標：
-1. **在個人電腦設定 SSH ProxyJump**：實現 VS Code 與終端機「一鍵穿透公用跳板機直連內網 VM」，徹底告別繁瑣的手動二次跳轉。
-2. **在 VM 內一鍵初始化極速開發環境**：安裝現代化的 `uv` (Python)、`Node.js + pnpm` 以及 `Docker`。
+在[第 01 章](file:///home/ubuntu/aicloud_agent_course/01_aicloud_infrastructure_setup.md)中，我們在晶創雲建立了一台具備 IP 的雲端 VM（例如 IP 為 `140.110.164.93`），並下載了私鑰金鑰（例如 `~/.ssh/h100.pem`）。
+
+本章將帶領學員掌握：
+1. **傳統終端機 SSH 連線方式**：理解底層連線原理。
+2. **現代 AI Agentic 連線模式 (Antigravity / VS Code Remote SSH)**：透過配置 `~/.ssh/config`，讓強大的 **AI Agent（以 Google Gemini 模型為核心）直接進駐在 VM 內部**，與開發者進行結對編程（Pair Programming）與主機操作！
+3. **VM 內全端與容器環境一鍵初始化**：配置 `uv`、Python、`Node.js`、`Docker`。
 
 ---
 
-## 🔑 第一部分：個人電腦端 SSH ProxyJump 直連設定
+## 💻 第一部分：傳統終端機 SSH 登入示範
 
-> 💡 **原理**：`ProxyJump` 是 OpenSSH 內建的穿透機制。流量在底層由跳板機自動轉發，您在自己電腦輸入一個指令，就能直達內網機器，**完全不需在別人的跳板機上安裝任何軟體**。
+在過去，開發者通常需要打開終端機，手動輸入帶有金鑰路徑的長指令：
 
-### 1. 打開個人電腦的 `~/.ssh/config`
-- **Mac / Linux**：`~/.ssh/config`
-- **Windows**：`C:\Users\你的使用者名稱\.ssh\config`
+```bash
+# 傳統終端機連線指令
+ssh -i ~/.ssh/h100.pem ubuntu@140.110.164.93
+```
 
-### 2. 寫入穿透跳板機設定
+- **優點**：簡單直接、不需要任何 IDE。
+- **缺點**：每次都要指定金鑰路徑；若網路不穩容易斷線；無法享用現代 AI Agent 的自動化編程與視覺化檔案管理功能。
+
+---
+
+## 🤖 第二部分：現代 AI Agentic 模式 (Antigravity / VS Code Remote)
+
+現代軟體工程的最佳實踐是：**將 AI Agent（如 Antigravity IDE，以 Gemini 為大腦）直接掛載至遠端 VM 內部**，讓 AI 能夠即時看懂專案程式碼、自動修復 Bug、執行終端機命令！
+
+### 1. 在個人電腦配置 `~/.ssh/config`
+打開您自己電腦上的 `~/.ssh/config`（Windows 為 `C:\Users\你的帳號\.ssh\config`，Mac/Linux 為 `~/.ssh/config`），加入這段標準企業級連線設定：
 
 ```ssh-config
-# 1. 國網公用跳板機 (有公網 IP 的中繼站)
-Host twcc-jump
-    HostName 203.145.217.185     # 跳板機的公網 IP (依晶創雲分配)
-    User ubuntu                  # 跳板機使用者帳號
-    IdentityFile ~/.ssh/nchc2aicloud.pem
-
-# 2. 您在晶創雲的專屬內網 VM (透過 ProxyJump 自動穿透)
-Host aicloud-node
-    HostName 10.0.0.99           # 您的 VM 私有 IP (第01章記下的 IP)
-    User ubuntu                  # VM 使用者帳號
-    ProxyJump twcc-jump          # 關鍵設定：指定穿透跳板機
-    IdentityFile ~/.ssh/nchc2aicloud.pem
+Host twcc
+  HostName 140.110.164.93
+  User ubuntu
+  IdentityFile ~/.ssh/h100.pem
+  IdentitiesOnly yes
+  IPQoS none
+  ServerAliveInterval 30
+  ServerAliveCountMax 3
 ```
 
-### 3. 一秒直連驗證
-在您自己的筆電終端機直接輸入：
-```bash
-ssh aicloud-node
-```
-👉 **瞬間直接進入晶創雲內網 VM 的終端機！**  
-在 VS Code 擴充套件 **Remote - SSH** 中，點擊 `aicloud-node`，即可像在本地電腦一樣進行圖形化寫程式與檔案管理。
+#### 參數深度解析（針對國網 VM 環境優化）：
+- **`IdentitiesOnly yes`**：強制只使用指定的 `h100.pem` 私鑰，避免因嘗試其他金鑰導致被伺服器阻擋。
+- **`IPQoS none`**：修復部分機房/學術網路（TANet）因封包 QoS 標籤導致 SSH 卡頓或連線凍結的問題。
+- **`ServerAliveInterval 30` & `ServerAliveCountMax 3`**：每 30 秒自動發送心跳封包，防止長時間無操作被雲端防火牆主動切斷連線。
 
 ---
 
-## ⚡ 第二部分：VM 開發環境一鍵極速初始化
+### 2. 透過 Antigravity IDE (或 VS Code) 直連 VM
 
-進入 `aicloud-node` 終端機後，我們使用現代化工具鏈進行初始化：
+1. 打開 **Antigravity IDE**（或 VS Code）。
+2. 按下快速鍵 `Ctrl + Shift + P`（Mac 為 `Cmd + Shift + P`）➔ 輸入 **`Remote-SSH: Connect to Host...`**。
+3. 選擇清單中的 **`twcc`**。
+4. **效果**：
+   - IDE 會自動在晶創雲 VM 內部啟動後台服務。
+   - **AI Agent（以 Gemini 為預設模型）正式進駐這台 VM**！
+   - 您可以直接在對話框對 AI 說：*「請幫我檢查這台 VM 的磁碟空間，並安裝 Python 與 Docker」*，AI 就會直接在 VM 終端機替您執行！
 
-### 1. 複製並執行一鍵安裝腳本
+---
+
+## ⚡ 第三部分：VM 內開發環境一鍵極速初始化
+
+透過 Antigravity / SSH 進入 VM 終端機後，我們執行一鍵腳本安裝全套現代工具鏈：
 
 ```bash
 # 1. 系統更新與基礎工具 (git, curl, build-essential, jq, htop)
@@ -84,18 +100,18 @@ pnpm -v
 
 ---
 
-## 📦 工具鏈選型優勢說明
+## 🧠 第四部分：為什麼初始模型首選 Google Gemini？
 
-| 工具 | 傳統做法對比 | 為什麼本課程選擇它？ |
-| :--- | :--- | :--- |
-| **`uv`** | 原生 pip / virtualenv / poetry | **速度快 10~100 倍**。Rust 編寫，自動管理 Python 版本（不需 pyenv），專案免手動 activate。 |
-| **`pnpm`** | 傳統 npm / yarn | **節省 70% 硬碟空間**，使用 Hard link 機制，安裝依賴速度極快。 |
-| **`Docker`** | 手動安裝 DB / Redis | 支援容器化沙盒隔離，方便後續 Agent 安全執行任務。 |
+在 Antigravity 等 AI Agentic IDE 中，初始模型強烈推薦選擇 **Google Gemini**（如 Gemini 1.5 Pro / Flash、Gemini 3.7）：
+1. **超長 Context Window（百萬級上下文）**：能夠一次性讀取整台 VM 的所有專案檔案、日誌與設定檔，不會遺忘上下文。
+2. **多模態與代碼推理力**：能看懂架構圖與後台截圖，並精準生成無 Bug 的 Python / Bash 腳本。
+3. **超低延遲與高性價比**：在進行高頻度的 Agent 工具調用（Tool Calling）與結對編程時反應極快。
 
 ---
 
 ## 🎯 本章學習總結
-- 掌握 SSH ProxyJump 穿透技術，實現本地 VS Code 直連國網內網 VM。
-- 完成 Linux 系統現代化開發工具鏈（uv, Python 3.12, Node.js LTS, pnpm, Docker）配置。
+- 了解傳統 SSH 指令與現代 `~/.ssh/config` 最佳化配置差異。
+- 掌握 **Antigravity / VS Code Remote SSH** 模式，實現 **AI Agent (Gemini) 直接進駐 VM 協同開發**。
+- 一鍵完成 VM 內部 `uv`、Python 3.12、Node.js LTS、pnpm、Docker 現代工具鏈初始化。
 
 👉 **下一章預告**：在[第 03 章](file:///home/ubuntu/aicloud_agent_course/03_taiwan_ai_api_integration.md)中，我們將透過 Python 與 FastAPI 串接 **Taiwan AI RAP 雲端大模型**，實作 Token 安全管理與 SSE 串流打字機推播！
