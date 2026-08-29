@@ -66,12 +66,13 @@ TAIWAN AI RAP API Guide 目前列出：
 | Models | 取得計畫可用模型 | 必做 |
 | Chat Completions | 以 `messages` 產生對話回覆 | 必做 |
 | Embeddings | 將文字轉成向量 | 延伸 |
-| Audio | 語音辨識與語音合成 | 延伸 |
+| Audio／Transcriptions | 將錄音檔轉成文字 | 第 5 章必做 |
+| Audio／Speech | 將文字轉成語音 | 延伸 |
 | Rerank | 依 Query 重排文件 | 延伸 |
 | Image | 圖片生成與編輯 | 延伸 |
 | Completions | 舊式文字補全 | Legacy，不作主流程 |
 
-本課程的 LiteLLM 與 Next.js Chatbot 只承諾 **Models＋Chat Completions**。不要把 ASR、TTS、Rerank 或 Image 當成聊天模型；它們有不同 Endpoint、Request Body 與回應格式。
+本課程要求 **Models＋Chat Completions＋Audio Transcriptions**：Chat Completions 用於整理會議紀錄，Audio Transcriptions 用於第 5 章的錄音檔轉錄。不要把 STT、TTS、Rerank 或 Image 當成聊天模型；它們有不同 Endpoint、Request Body 與回應格式。
 
 官方 Chat Completions 規格重點：
 
@@ -95,7 +96,7 @@ Base URL 應直接複製自己計畫「API入口」顯示的值，不在教材�
 | Base URL | 上游 API 的服務位址 |
 | Model ID | 上游實際接受的模型名稱 |
 | API Key | 只存於伺服器端環境變數 |
-| 功能 | Chat、Streaming、Embedding、Tool Calling 等 |
+| 功能 | Chat、Streaming、Audio Transcriptions、Embedding、Tool Calling 等 |
 | 限制 | RPM、TPM、Context、資料政策與費率 |
 
 不要從舊教材複製 Base URL 或模型名稱。請使用帳號後台、講師提供資料及供應商官方文件確認當期資訊。
@@ -107,14 +108,15 @@ Base URL 應直接複製自己計畫「API入口」顯示的值，不在教材�
 - DNS 與 TLS 可連線
 - Bearer API入口金鑰有效
 - `GET /models` 可取得該計畫可用模型
-- Chat 使用的 Model ID 確實存在於回傳清單
+- Chat 與 STT 使用的 Model ID 確實存在於回傳清單
+- 使用無敏感資訊的課堂短音檔直接呼叫 Audio Transcriptions 成功
 - 非串流 Chat 可回覆
 - 串流 Chat 可正常結束
 - 錯誤時會回傳可辨識的 HTTP 狀態
 
 建議請 Antigravity 協助，但不要把 Key 放進提示詞：
 
-> 請先閱讀 TAIWAN AI RAP API Guide 與目前專案中的 .env.example，提出一個不顯示、不記錄 API入口金鑰的連線測試計畫。先以 GET /models 確認可用 Model ID，再測試 Chat Completions 的非串流、SSE 串流、錯誤模型名稱與未授權請求。Base URL 必須使用我在計畫 API入口取得的環境變數，不可自行猜測或寫死。先列出預期結果，不要執行。
+> 請先閱讀 TAIWAN AI RAP API Guide 與目前專案中的 .env.example，提出一個不顯示、不記錄 API入口金鑰的連線測試計畫。先以 GET /models 確認可用 Model ID，再測試 Audio Transcriptions 短音檔，以及 Chat Completions 的非串流、SSE 串流、錯誤模型名稱與未授權請求。Base URL 必須使用我在計畫 API入口取得的環境變數，不可自行猜測或寫死。先列出預期結果，不要執行。
 
 若直接呼叫尚未成功，不要急著加入 LiteLLM，否則會同時排查兩層問題。
 
@@ -169,11 +171,13 @@ general_settings:
 至少完成以下測試：
 
 1. 使用 Master Key 呼叫 `nchc-chat` 成功。
-2. 錯誤 Key 回傳 401／403，而不是進入上游。
-3. 不存在的模型別名回傳明確錯誤。
-4. Streaming 能逐段傳回並正常結束。
-5. LiteLLM 重新啟動後設定仍存在。
-6. 上游 API 暫時失敗時，能在日誌中定位是 Gateway 或 Provider 問題。
+2. 使用無敏感資訊的短音檔呼叫 `meeting-stt` 成功。
+3. `meeting-llm` 的非串流與 SSE 呼叫成功。
+4. 錯誤 Key 回傳 401／403，而不是進入上游。
+5. 不存在的模型別名回傳明確錯誤。
+6. Streaming 能逐段傳回並正常結束。
+7. LiteLLM 重新啟動後設定仍存在。
+8. 上游 API 暫時失敗時，能在日誌中定位是 Gateway 或 Provider 問題。
 
 開發階段如需查看 LiteLLM UI 或 API 文件，可透過 Antigravity Ports 暫時預覽 4000，不要在晶創雲開放公網 Ingress。
 
@@ -188,6 +192,18 @@ model_list:
   - model_name: nchc-chat
     litellm_params:
       model: openai/<RAP_MODEL_ID>
+      api_base: os.environ/NCHC_API_BASE
+      api_key: os.environ/NCHC_API_KEY
+
+  - model_name: meeting-stt
+    litellm_params:
+      model: openai/<RAP_STT_MODEL_ID>
+      api_base: os.environ/NCHC_API_BASE
+      api_key: os.environ/NCHC_API_KEY
+
+  - model_name: meeting-llm
+    litellm_params:
+      model: openai/<RAP_LLM_MODEL_ID>
       api_base: os.environ/NCHC_API_BASE
       api_key: os.environ/NCHC_API_KEY
 
@@ -207,36 +223,38 @@ model_list:
 為不同用途建立穩定別名，例如：
 
 - `nchc-chat`
+- `meeting-stt`
+- `meeting-llm`
 - `openai-chat`
 - `claude-chat`
 - `general-chat`
 - `embedding`
 
-前三個別名代表指定上游，方便驗證與權限管理；`general-chat` 才適合依政策配置多個部署、負載平衡或備援。不要直接把供應商當期的完整 Model ID 散布在所有應用程式。模型別名讓管理者可以在 Gateway 調整後端，而不必同步修改每一個使用端。
+`meeting-stt` 與 `meeting-llm` 是第 5 章固定使用的應用別名；其他指定上游別名方便驗證與權限管理。`general-chat` 才適合依政策配置多個部署、負載平衡或備援。不要直接把供應商當期的完整 Model ID 散布在所有應用程式。模型別名讓管理者可以在 Gateway 調整後端，而不必同步修改每一個使用端。
 
-新增後再次測試：
+新增後依 Endpoint 分開測試：
 
-- 相同輸入在不同模型是否可用
-- 是否都支援 Streaming
-- 是否接受相同參數
-- Timeout 與錯誤格式
-- Token／費率資料是否可正確記錄
-- Prompt 是否允許傳送至該供應商
+- Chat 模型是否接受預期的 `messages`、參數與 SSE
+- STT 模型是否接受實際音訊格式、multipart 欄位與檔案大小
+- 不把 Chat Request 傳給 STT，也不把音訊上傳傳給 Chat 模型
+- 各模型的 Timeout 與錯誤格式
+- Token、請求數與費率資料是否可正確記錄
+- 錄音、逐字稿與 Prompt 是否允許傳送至該供應商
 
 建議提示詞：
 
-> 請根據 LiteLLM 官方 Provider 文件與目前 `.env.example`，規劃把已取得授權的 TAIWAN AI RAP、OpenAI 與 Anthropic Claude 上游加入同一個 Gateway。請使用 `nchc-chat`、`openai-chat`、`claude-chat` 作為別名，真正 Model ID 與金鑰只從環境變數取得。先列出各上游的必要欄位、相容性測試、資料政策與失敗停損點，不要讀取 Secret，也不要立即修改檔案。
+> 請根據 LiteLLM 官方 Provider 文件與目前 `.env.example`，規劃把已取得授權的 TAIWAN AI RAP、OpenAI 與 Anthropic Claude 上游加入同一個 Gateway。請包含第 5 章需要的 `meeting-stt`、`meeting-llm`，以及用於多供應商驗證的 `nchc-chat`、`openai-chat`、`claude-chat`；真正 Model ID 與金鑰只從環境變數取得。先列出各上游的必要欄位、相容性測試、資料政策與失敗停損點，不要讀取 Secret，也不要立即修改檔案。
 
-## 10. 特殊 RAP 模型不能套用 Chat 流程
+## 10. RAP 非聊天模型要獨立驗證
 
 RAP 官方特殊模型文件提供以下例子：
 
-- ASR：`POST /audio/transcriptions`，使用 multipart 上傳音訊檔。
+- STT／ASR：`POST /audio/transcriptions`，使用 multipart 上傳音訊檔；這是第 5 章必做項目。
 - TTS：`POST /audio/speech`，回傳二進位音訊；官方明確不建議使用 SSE。
 - Rerank：`POST /rerank`，輸入 `query`、`documents` 與 `top_n`。
 - Safeguard：需要在 Policy Prompt 明確定義指令、定義、違規／安全標準、範例與輸出格式。
 
-這些功能可在後續專題新增，但每一項都要獨立驗證 LiteLLM Provider 支援與資料政策，不應只更換 `model` 就假設能沿用 Chatbot。
+第 5 章會使用 Audio Transcriptions；TTS、Rerank 與 Safeguard 則列為延伸。每一項都要獨立驗證 LiteLLM Provider 支援、請求格式與資料政策，不應只更換 `model` 就假設能沿用同一流程。
 
 ## 11. OpenAI-compatible 的範圍
 
@@ -252,6 +270,9 @@ RAP 官方特殊模型文件提供以下例子：
 - [ ] LiteLLM 只監聽遠端 localhost
 - [ ] `.env` 未加入 Git
 - [ ] `nchc-chat` 非串流與串流測試成功
+- [ ] TAIWAN AI RAP STT 已用無敏感資訊的短音檔直接測試成功
+- [ ] `meeting-stt` 已透過 LiteLLM 完成 Audio Transcriptions 測試
+- [ ] `meeting-llm` 已完成非串流與 SSE 測試
 - [ ] 已加入並驗證至少一個其他授權模型，或記錄暫不加入的原因
 - [ ] 每個上游都有獨立別名，應用程式不需要知道上游 API Key
 - [ ] 已分別測試指定上游別名；尚未驗證前不啟用跨供應商 Fallback

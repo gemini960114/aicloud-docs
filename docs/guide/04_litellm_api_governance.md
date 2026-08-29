@@ -14,10 +14,10 @@
 | :--- | :--- | :--- | :---: |
 | 上游 Provider | LiteLLM | 呼叫國網或其他模型 | 否 |
 | LiteLLM 管理者 | 維運人員 | 管理模型、Key、團隊與設定 | 否 |
-| 應用程式 | Next.js 後端 | 呼叫允許的 LiteLLM 模型 | 否 |
-| 終端使用者 | Chatbot 使用者 | 登入 Chatbot | 不使用模型 API Key |
+| 應用程式 | Next.js 後端 | 呼叫允許的 LiteLLM STT 與 LLM 模型 | 否 |
+| 終端使用者 | 會議系統使用者 | 第 6 章由 Cloudflare Access 控制入口 | 不使用模型 API Key |
 
-如果把 Master Key 放進 Chatbot，應用程式就可能取得不必要的管理權限；如果把 Virtual Key 放進前端 JavaScript，瀏覽器使用者仍可複製並在其他地方濫用。
+如果把 Master Key 放進會議系統，應用程式就可能取得不必要的管理權限；如果把 Virtual Key 放進前端 JavaScript，瀏覽器使用者仍可複製並在其他地方濫用。
 
 ## 2. 資料庫是治理功能的前提
 
@@ -62,12 +62,12 @@ Admin UI 顯示的金額取決於 LiteLLM 是否有該模型的正確價格資�
 - 關閉 4000 的 Antigravity Port 預覽。
 - 檢查截圖與學習紀錄沒有 Secret、完整 Prompt 或個人資料。
 
-## 4. 為 Chatbot 建立專用 Virtual Key
+## 4. 為會議轉錄系統建立專用 Virtual Key
 
 建議權限：
 
-- Key 名稱：可辨識環境與應用，例如 `course-chatbot-dev`
-- Models：只允許 `nchc-chat`，需要時才加入備援別名
+- Key 名稱：可辨識環境與應用，例如 `course-meeting-dev`
+- Models：只允許 `meeting-stt` 與 `meeting-llm`
 - 到期時間：課程或專案可接受的最短期限
 - RPM／TPM：先使用保守上限，再依量測調整
 - Budget：若上游計價資料可靠，再設定預算與週期
@@ -81,29 +81,29 @@ Admin UI 顯示的金額取決於 LiteLLM 是否有該模型的正確價格資�
 | :--- | :--- | :--- |
 | TAIWAN AI RAP API入口金鑰 | TAIWAN AI RAP Lightweight Portal 的計畫／API入口 | LiteLLM 呼叫國網模型 |
 | RAP 使用者金鑰 | RAP Portal 使用者功能 | 管理或查詢相關使用量功能，以 Portal 說明為準 |
-| LiteLLM Virtual Key | 自建 LiteLLM Gateway | Next.js Chatbot 呼叫允許的模型別名 |
+| LiteLLM Virtual Key | 自建 LiteLLM Gateway | Next.js 會議系統呼叫 `meeting-stt` 與 `meeting-llm` |
 
-Next.js 只取得 LiteLLM Virtual Key；TAIWAN AI RAP API入口金鑰只存在 LiteLLM 環境中。
+Next.js 只取得最小權限 LiteLLM Virtual Key；TAIWAN AI RAP API入口金鑰只存在 LiteLLM 環境中。
 
 建議提示詞：
 
-> 請依 LiteLLM 官方文件規劃一組給 course-chatbot-dev 使用的 Virtual Key。它只能呼叫 nchc-chat，需有到期時間、保守的 RPM／TPM，並可被獨立撤銷。先列出管理 API 操作、必要前提與驗證方法，不要顯示 Master Key，也不要執行。
+> 請依 LiteLLM 官方文件規劃一組給 `course-meeting-dev` 使用的 Virtual Key。它只能呼叫 `meeting-stt` 與 `meeting-llm`，需有到期時間、保守的 RPM／TPM、平行請求限制，並可被獨立撤銷。先列出管理 API 操作、必要前提與兩種 Endpoint 的驗證方法，不要顯示 Master Key，也不要執行。
 
 ## 5. 多租戶受控分發實作
 
-本節把 LiteLLM 從單一 Chatbot Proxy 提升為可治理的內部模型服務。課堂建立三個用途不同的主體；數值是教學起始值，講師應依上游額度與實測結果調整：
+本節把 LiteLLM 從單一應用程式 Proxy 提升為可治理的內部模型服務。課堂建立三個用途不同的主體；數值是教學起始值，講師應依上游額度與實測結果調整：
 
 | 主體／Key | 允許的模型別名 | 教學限制 | 用途 |
 | :--- | :--- | :--- | :--- |
 | `team-a-dev` | `nchc-chat` | 10 RPM、保守 TPM、短期到期 | 驗證單一國網模型權限 |
 | `team-b-eval` | `nchc-chat`、`claude-chat` | 20 RPM、獨立 TPM 與期限 | 比較兩個已授權上游 |
-| `chatbot-prod` | `nchc-chat`（或已驗證的 `general-chat`） | 正式環境 RPM／TPM、可用時設定週期預算 | 第 5、6 章的 Chatbot |
+| `meeting-app-prod` | `meeting-stt`、`meeting-llm` | 正式環境 RPM／TPM、平行請求數與可用的週期預算 | 第 5、6 章的會議轉錄系統 |
 
 若沒有 Anthropic Claude 授權，`team-b-eval` 可改用另一個已授權上游；不可為完成表格而使用未授權憑證。
 
 ### 操作順序
 
-1. 建立 Team A、Team B 與正式 Chatbot 的非敏感識別資料。
+1. 建立 Team A、Team B 與正式會議系統的非敏感識別資料。
 2. 設定每個主體允許的模型清單、RPM、TPM、平行請求數、期限與預算週期。
 3. 各自產生 Virtual Key，僅在建立當下安全交付給指定使用端。
 4. 分別執行允許模型、禁止模型、限流、到期及撤銷測試。
@@ -113,7 +113,7 @@ LiteLLM 可在 Team、使用者、Key 及個別模型層級設定預算或流量
 
 建議提示詞：
 
-> 請依 LiteLLM 官方 Virtual Keys 與 Budgets／Rate Limits 文件，規劃 `team-a-dev`、`team-b-eval`、`chatbot-prod` 三種受控存取。列出每個主體的允許模型、RPM、TPM、平行請求數、期限、預算與非敏感 Metadata，並說明 Team 上限和 Key 上限如何配合。先產生不含 Secret 的操作計畫及驗收矩陣，不要執行，也不要在輸出中顯示 Master Key 或 Virtual Key。
+> 請依 LiteLLM 官方 Virtual Keys 與 Budgets／Rate Limits 文件，規劃 `team-a-dev`、`team-b-eval`、`meeting-app-prod` 三種受控存取。列出每個主體的允許模型、RPM、TPM、平行請求數、期限、預算與非敏感 Metadata，並說明 Team 上限和 Key 上限如何配合。先產生不含 Secret 的操作計畫及驗收矩陣，不要執行，也不要在輸出中顯示 Master Key 或 Virtual Key。
 
 ## 6. 權限與限制的驗收矩陣
 
@@ -122,7 +122,7 @@ LiteLLM 可在 Team、使用者、Key 及個別模型層級設定預算或流量
 | Team A Key＋`nchc-chat` | 成功，且用量歸屬 Team A |
 | Team A Key＋`claude-chat` | 拒絕，不呼叫上游 |
 | Team B Key＋已允許模型 | 成功，且用量歸屬 Team B |
-| Chatbot Key＋核准的正式模型別名 | 成功，不暴露實際上游憑證 |
+| 會議系統 Key＋`meeting-stt`／`meeting-llm` | 成功，不暴露實際上游憑證 |
 | 錯誤或撤銷 Key | 401／403 |
 | 超過 RPM／TPM | 429 或文件定義的限制錯誤 |
 | 超過可靠計價模型的週期預算 | 拒絕或依設定執行預算政策 |
@@ -199,11 +199,11 @@ Fallback 不等於永遠重試。先依失敗類型決定行為：
 - [ ] PostgreSQL 與 LiteLLM 治理資料可持久化
 - [ ] Admin UI 只透過 Antigravity Ports 私人預覽
 - [ ] 能區分觀測用量與 RAP 正式帳務
-- [ ] Team A、Team B 與 Chatbot 各有獨立 Virtual Key
+- [ ] Team A、Team B 與會議系統各有獨立 Virtual Key
 - [ ] 各 Virtual Key 只能呼叫指定模型，且用量可正確歸屬
 - [ ] 已驗證 Team／Key 的 RPM、TPM、期限與可用的預算政策
 - [ ] 錯誤、撤銷、過期及限流測試符合預期
 - [ ] 日誌不含 Secret
 - [ ] 已記錄輪替與事件處理流程
 
-下一章將使用這組專用 Key，透過提示詞引導 AI 建立 [Next.js 全端 Chatbot](/guide/05_nextjs_chatbot_with_ai)。
+下一章將使用這組專用 Key，透過提示詞引導 AI 建立 [AI 會議轉錄與紀錄系統](/guide/05_ai_meeting_transcription)。

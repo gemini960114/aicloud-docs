@@ -2,7 +2,7 @@
   "name": "aicloud-docs",
   "version": "1.0.0",
   "type": "module",
-  "description": "晶創雲 Antigravity、LiteLLM Gateway、Next.js Chatbot 與 Cloudflare 部署教學手冊",
+  "description": "晶創雲 Antigravity、LiteLLM Gateway、AI 會議轉錄系統與 Cloudflare 部署教學手冊",
   "scripts": {
     "docs:dev": "vitepress dev docs --host",
     "docs:build": "vitepress build docs",

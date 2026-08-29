@@ -4,7 +4,7 @@ layout: home
 hero:
   name: "晶創雲雲平台 AI 應用開發課程"
   text: "Antigravity × TAIWAN AI RAP × LiteLLM"
-  tagline: 從 AI 輔助遠端維運、多模型 API Gateway 與權限治理，到 Chatbot 建置、GitHub 版本交付及 Cloudflare 安全發布
+  tagline: 從 AI 輔助遠端維運、多模型 API Gateway 與權限治理，到錄音轉錄、會議紀錄、GitHub 版本交付及 Cloudflare 安全發布
   actions:
     - theme: brand
       text: 查看課程地圖
@@ -31,17 +31,17 @@ features:
     linkText: 建立模型 Gateway
   - icon: 🛡️
     title: 第 4 章｜Virtual Key 與流量治理
-    details: 向不同團隊與 Chatbot 發放獨立 Virtual Key，分別限制模型、RPM、TPM、期限與預算，並追蹤使用紀錄。
+    details: 向不同團隊與會議系統發放獨立 Virtual Key，分別限制 STT／LLM 模型、RPM、TPM、期限與預算。
     link: /guide/04_litellm_api_governance
     linkText: 設計存取治理
   - icon: 💬
-    title: 第 5 章｜AI 協作 Chatbot 與 GitHub
-    details: 以需求、限制與驗收 Prompt 建立串流 Chatbot，再經 Secret 檢查及人工確認完成 GitHub 版本交付。
-    link: /guide/05_nextjs_chatbot_with_ai
-    linkText: 建立與交付應用
+    title: 第 5 章｜AI 會議轉錄與紀錄
+    details: 以分階段 Prompt 建立錄音檔上傳、STT、逐字稿修訂與串流會議紀錄，再安全交付到 GitHub。
+    link: /guide/05_ai_meeting_transcription
+    linkText: 建立會議系統
   - icon: 🔒
     title: 第 6 章｜Cloudflare 安全發布
-    details: 將開發預覽轉為可持續運作的正式服務，使用 Production Build、Cloudflare Access 與 Tunnel 對外發布。
+    details: 將會議系統轉為可持續運作的正式服務，以 Cloudflare Access 保護沒有內建帳號的應用，再透過 Tunnel 發布。
     link: /guide/06_cloudflare_deployment
     linkText: 發布正式服務
 ---

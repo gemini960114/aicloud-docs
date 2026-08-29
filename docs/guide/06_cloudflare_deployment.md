@@ -26,8 +26,8 @@ Antigravity Ports 解決的是「學員如何查看遠端開發服務」；Cloud
 [Cloudflare Tunnel]
        │
        ▼
-[Next.js Production :3000]
-       │ Chatbot Virtual Key
+[Next.js 會議系統 :3000]
+       │ 會議系統 Virtual Key
        ▼
 [LiteLLM :4000（內部）]
        │ Provider Keys
@@ -35,13 +35,13 @@ Antigravity Ports 解決的是「學員如何查看遠端開發服務」；Cloud
        └── 其他授權模型 API
 ```
 
-預設只公開 Chatbot。LiteLLM、PostgreSQL、管理 UI 與上游 Key 都留在內部。
+預設只公開受 Cloudflare Access 保護的會議轉錄系統。LiteLLM、PostgreSQL、管理 UI 與上游 Key 都留在內部。
 
 ## 3. Production Build
 
 正式環境不得使用 `npm run dev`。請 Antigravity 先規劃：
 
-> 請檢查 Next.js Chatbot 與 LiteLLM Gateway，提出正式部署計畫。Next.js 必須使用 production build，LiteLLM 與 PostgreSQL 不得直接公開，Secret 不可寫入映像或 Git。請比較 systemd 與 Docker Compose，選擇本專案較簡單且可重現的方式，列出健康檢查、重啟、日誌、備份與回復步驟，暫時不要執行。
+> 請檢查 Next.js 會議轉錄系統與 LiteLLM Gateway，提出正式部署計畫。Next.js 必須使用 production build，LiteLLM 與 PostgreSQL 不得直接公開，Secret 不可寫入映像或 Git。請比較 systemd 與 Docker Compose，選擇本專案較簡單且可重現的方式，列出健康檢查、重啟、日誌、備份與回復步驟，暫時不要執行。
 
 本課程建議用 Docker Compose 管理應用服務，理由是 LiteLLM 與 PostgreSQL 本來就適合容器化，也可避免 NVM 安裝的 Node.js 路徑在 systemd 中不一致。
 
@@ -66,7 +66,7 @@ PostgreSQL         不發布主機 Port
 - VM 重新啟動後服務自動恢復
 - Next.js 能從容器網路呼叫 LiteLLM
 - PostgreSQL 資料持久化
-- Chatbot 使用 Virtual Key，不是 Master Key
+- 會議系統使用只允許 `meeting-stt` 與 `meeting-llm` 的 Virtual Key，不是 Master Key
 - 服務只監聽必要的 localhost Port
 - 日誌不含 Secret 或完整敏感 Prompt
 
@@ -82,7 +82,7 @@ Quick Tunnel 會產生隨機的 `trycloudflare.com` 網址，適合短暫測試�
 - 同時進行中的請求有數量限制，超過時會回傳 429。
 - 不支援 Server-Sent Events（SSE）。
 
-本課程 Chatbot 需要 SSE 串流，因此開發時使用 Antigravity Ports，正式發布使用具名 Cloudflare Tunnel，不執行 `cloudflared tunnel --url ...`。
+本課程的會議紀錄需要 SSE 串流，且錄音檔上傳涉及較長請求，因此開發時使用 Antigravity Ports，正式發布使用具名 Cloudflare Tunnel，不執行 `cloudflared tunnel --url ...`。
 
 ## 6. 安裝與驗證 cloudflared
 
@@ -125,21 +125,21 @@ Cloudflare Tunnel 由 VM 主動連出，因此通常不需要開放晶創雲 80�
 - 管理者與一般使用者分離
 - 拒絕規則優先於寬鬆允許規則
 
-接著才建立 Chatbot 的 Published Application Route：
+接著才建立會議系統的 Published Application Route：
 
 | 欄位 | 值 |
 | :--- | :--- |
-| Hostname | `chat.<你的網域>` |
+| Hostname | `meeting.<你的網域>` |
 | Service | `http://127.0.0.1:3000` |
 | 對外協定 | HTTPS |
 
-將 Access 與 Hostname 視為同一個受控發布階段，儲存後立即用未登入瀏覽器測試應被阻擋，再登入測試首頁、一般回覆與 SSE。Cloudflare 官方提醒，只有 Tunnel Route 而沒有 Access Application 時，網際網路使用者可能直接存取該 Hostname；請參考[具名 Tunnel 官方流程](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/get-started/create-remote-tunnel/)。
+將 Access 與 Hostname 視為同一個受控發布階段，儲存後立即用未登入瀏覽器測試應被阻擋，再登入測試首頁、錄音檔上傳、STT 與會議紀錄 SSE。Cloudflare 官方提醒，只有 Tunnel Route 而沒有 Access Application 時，網際網路使用者可能直接存取該 Hostname；請參考[具名 Tunnel 官方流程](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/get-started/create-remote-tunnel/)。
 
-Cloudflare Access 保護「誰能進入 Chatbot」；Next.js 與 LiteLLM 仍需各自的 Session、Virtual Key、Rate Limit 與日誌政策。
+本課程版本沒有應用程式帳號與 Session，因此 Cloudflare Access 是正式入口的必要身分保護；Next.js 仍只持有最小權限 Virtual Key，LiteLLM 仍需 Rate Limit、模型白名單與日誌政策。
 
 ## 9. 不建議公開 LiteLLM API
 
-主課程架構中，外部使用者只需要 Chatbot，不需直接呼叫 LiteLLM。
+主課程架構中，外部使用者只需要會議轉錄系統，不需直接呼叫 LiteLLM。
 
 若未來確實要提供 `api.<你的網域>`，應視為另一項進階服務，至少加入：
 
@@ -156,7 +156,7 @@ Cloudflare Access 保護「誰能進入 Chatbot」；Next.js 與 LiteLLM 仍需�
 
 ## 10. 請 Antigravity 協助部署與驗證
 
-> 請依已確認的正式部署計畫執行。每次只變更一個服務，先備份可回復的設定並顯示不含 Secret 的差異。到 Cloudflare Connector Token 步驟時停止，由我親自在終端機完成。其餘完成後驗證 Compose 狀態、健康檢查、localhost 存取、cloudflared 服務、Access 未登入阻擋、登入後 Chatbot 串流，以及 VM 重啟後自動恢復。不得使用 Quick Tunnel，不得輸出 Tunnel Token、API Key、Cookie 或資料庫密碼。
+> 請依已確認的正式部署計畫執行。每次只變更一個服務，先備份可回復的設定並顯示不含 Secret 的差異。到 Cloudflare Connector Token 步驟時停止，由我親自在終端機完成。其餘完成後驗證 Compose 狀態、健康檢查、localhost 存取、cloudflared 服務、Access 未登入阻擋、登入後完成錄音檔上傳、STT 與會議紀錄串流，以及 VM 重啟後自動恢復。不得使用 Quick Tunnel，不得輸出 Tunnel Token、API Key、Cookie 或資料庫密碼。
 
 ## 11. 故障定位順序
 
@@ -177,8 +177,8 @@ LiteLLM
 每次只確認相鄰兩層：
 
 1. VM 內能否直接開啟 Next.js？
-2. Next.js 能否呼叫 LiteLLM？
-3. LiteLLM 能否呼叫指定上游？
+2. Next.js 能否分別呼叫 LiteLLM 的 `meeting-stt` 與 `meeting-llm`？
+3. LiteLLM 能否分別呼叫 STT 與 LLM 上游？
 4. Tunnel 是否連線？
 5. Access 是否允許正確身分？
 6. 公開網域是否能完成串流？
@@ -197,7 +197,7 @@ LiteLLM
 
 課程結束若不再提供服務：
 
-1. 撤銷 Chatbot Virtual Key。
+1. 撤銷會議系統 Virtual Key。
 2. 停用 Cloudflare Public Hostname 與 Access Application。
 3. 停止並移除不再使用的容器。
 4. 備份後刪除不需要的磁碟與 VM。
@@ -215,7 +215,7 @@ LiteLLM
 - [ ] Cloudflare Tunnel 只指向必要服務
 - [ ] Cloudflare Access 已驗證未登入與已登入情境
 - [ ] VM 重啟後服務自動恢復
-- [ ] Chatbot 的串流、限流及錯誤處理正常
+- [ ] 會議系統的錄音檔上傳、STT、串流、限流及錯誤處理正常
 - [ ] 已完成金鑰撤銷與資源清理演練
 
 至此，學員完成的是一套可延伸的 AI 應用基礎平台。未來可在同一個 LiteLLM Gateway 上增加 RAG、批次任務或獨立的進階 Agent 課程，而不必重新處理所有供應商金鑰與路由。

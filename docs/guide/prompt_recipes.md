@@ -66,27 +66,28 @@
 ## 5. Recipe：TAIWAN AI RAP 與 LiteLLM Gateway
 
 > 背景與現況：我已在 TAIWAN AI RAP Lightweight Portal 選擇正確計畫，API Base URL、API入口金鑰與 Model ID 會由我透過遠端終端機設定為環境變數。
-> 目標：建立只監聽 127.0.0.1:4000 的 LiteLLM Gateway，並把實際 RAP 模型映射成 nchc-chat。
-> 技術限制：先依 TAIWAN AI RAP API Guide 測試 GET /models，再測試 Chat Completions 的非串流與 SSE；LiteLLM 使用鎖定版本的容器與只引用環境變數的設定檔。
-> 安全限制：不得讀取、輸出、記錄或提交任何金鑰；不得在晶創雲開放 4000。
-> 驗收：正確請求成功，錯誤 Key、錯誤模型與上游中斷均有明確結果，重啟後設定仍存在。
+> 目標：建立只監聽 127.0.0.1:4000 的 LiteLLM Gateway，將 RAP 模型映射成 `nchc-chat`、`meeting-stt` 與 `meeting-llm`。
+> 技術限制：先依 TAIWAN AI RAP API Guide 測試 `GET /models`，分別直接測試 Audio Transcriptions、Chat Completions 非串流與 SSE，再驗證相同請求可透過 LiteLLM 模型別名完成；LiteLLM 使用鎖定版本的容器與只引用環境變數的設定檔。
+> 安全限制：不得讀取、輸出、記錄或提交任何金鑰、錄音或逐字稿；不得在晶創雲開放 4000。
+> 驗收：STT 與 LLM 正確請求成功，錯誤 Key、錯誤模型、無權限模型與上游中斷均有明確結果，重啟後設定仍存在。
 > 請先列出資料流、檔案清單、版本路徑風險、測試矩陣及回復方法，不要建立檔案。
 
-## 6. Recipe：Next.js Chatbot 規格
+## 6. Recipe：AI 會議轉錄與紀錄系統
 
-> 背景與現況：LiteLLM 的 nchc-chat 已通過非串流與 SSE 測試。
-> 目標：在 [專案目錄] 建立 Next.js 全端 Chatbot。
-> 架構限制：瀏覽器只呼叫同源 /api/chat；Next.js 伺服器端使用 LiteLLM Virtual Key；不得把 TAIWAN AI RAP Base URL、API入口金鑰或 LiteLLM Key 送到瀏覽器。
-> 功能：使用者／助理訊息、串流更新同一則回覆、送出與停止、等待與錯誤狀態、鍵盤及行動裝置基本可用。
-> 不包含：RAG、Agent、Tool Calling、檔案上傳、ASR、TTS、Rerank、Image 或對話資料庫。
-> 驗收：Lint、型別檢查與 Production Build 成功；前端 Bundle、Git 與日誌不含 Secret；錯誤 Key、模型不存在、上游逾時與使用者取消皆有測試。
-> 請先提出架構、檔案清單、資料流與測試計畫，不要寫程式碼。
+> 背景與現況：LiteLLM 的 `meeting-stt` 已通過短音檔 Audio Transcriptions 測試，`meeting-llm` 已通過 Chat Completions 非串流與 SSE 測試；應用程式 Virtual Key 只允許這兩個別名。
+> 目標：在 [專案目錄] 建立 Next.js 全端 AI 會議轉錄與紀錄系統。
+> 架構限制：瀏覽器只呼叫同源的 `/api/transcribe` 與 `/api/minutes`；Next.js 伺服器端從環境變數讀取 LiteLLM Base URL、Virtual Key 與固定模型別名；不得把任何 Key、內部 Base URL 或上游 Model ID 送到瀏覽器。
+> 功能：上傳短錄音檔、音訊預覽、STT、可人工修訂的逐字稿、串流產生固定格式會議紀錄、停止、複製及 Markdown／TXT 匯出。
+> 不包含：應用程式登入、使用者輸入 API Key／Base URL、麥克風、模型選擇、長音訊分段、歷史資料庫、RAG、Agent 或自訂 Prompt。
+> 安全限制：驗證格式與大小、清理暫存檔，不在日誌、Git 或錯誤回應保存錄音、逐字稿、會議內容或 Secret；正式公開前由 Cloudflare Access 保護。
+> 驗收：Lint、型別檢查與 Production Build 成功；正常及失敗路徑通過；模型不捏造未提供的負責人、期限與決議。
+> 請先提出分階段架構、檔案清單、兩條資料流、隱私風險與測試矩陣，不要寫程式碼。
 
-## 7. Recipe：SSE 串流除錯
+## 7. Recipe：會議紀錄 SSE 串流除錯
 
 > 現象：[描述實際畫面、HTTP 狀態與何時中斷，不要只寫「不能用」]。
-> 已驗證：[列出 RAP、LiteLLM、Next.js 各層已完成的測試]。
-> 目標：找出串流在 RAP → LiteLLM → Next.js → Browser 的哪一層失效。
+> 已驗證：[列出 LLM、LiteLLM `meeting-llm`、Next.js `/api/minutes` 各層已完成的測試]。
+> 目標：找出會議紀錄串流在 LLM → LiteLLM → Next.js → Browser 的哪一層失效。
 > 請一次只測相鄰兩層，檢查 HTTP 狀態、Content-Type、首段延遲、資料框架、結束訊號、Buffer 邊界與取消傳播。
 > 禁止事項：不得同時修改前端、後端與 Gateway；不得把關閉驗證、停用 TLS 或公開 Port 當作解法。
 > 輸出：分開列出已驗證事實、推測、下一個最小測試，以及該測試如何證明或排除假設。
@@ -100,7 +101,7 @@
 
 ## 9. Recipe：GitHub 版本交付
 
-> 背景與現況：Chatbot 已通過 Lint、型別檢查、Production Build 與人工驗收，README 已使用假值說明環境變數。
+> 背景與現況：會議轉錄系統已通過錄音檔上傳、STT、會議紀錄 SSE、Lint、型別檢查、Production Build 與人工驗收，README 已使用假值說明環境變數。
 > 目標：把可重現的原始碼安全交付到 GitHub；本輪不部署服務。
 > 第一階段只做唯讀檢查：確認 Git 狀態、分支、Remote、.gitignore、差異、未追蹤檔案、大型檔案、Build 產物，以及 .env、金鑰、憑證或日誌的洩漏風險。不得讀取或顯示 Secret 值。
 > 登入限制：未登入時使用 GitHub CLI 官方 Web／Device Flow；到瀏覽器授權步驟立即暫停，由我親自完成。不得要求我提供密碼、Token、Cookie 或裝置碼。
@@ -112,18 +113,18 @@
 ## 10. Recipe：Production 部署審查
 
 > 背景與現況：開發版已透過 Antigravity Ports 完成聯調。
-> 目標：將 Next.js、LiteLLM 與 PostgreSQL 以可重現方式部署，並只透過 Cloudflare Access／Tunnel 公開 Chatbot。
+> 目標：將 Next.js 會議轉錄系統、LiteLLM 與 PostgreSQL 以可重現方式部署，並只透過 Cloudflare Access／Tunnel 公開會議系統。
 > 技術限制：Next.js 使用 Production Build 與 Node.js Runtime，不使用開發伺服器或純靜態匯出；容器內以 service name 連線；PostgreSQL 不發布主機 Port。
-> 安全限制：LiteLLM Admin UI、4000 Port、資料庫與任何 Secret 不可公開；不得使用不支援 SSE 的 Quick Tunnel；具名 Tunnel 的 Connector Token 由我親自在終端機處理，不得進入 Prompt、Git、截圖或共用 Shell History。
-> 發布順序：先完成 localhost 驗收與 cloudflared 安裝檢查，再建立具名 Tunnel、Access Application 及最小允許政策，最後才建立只指向 Chatbot 的 Published Application Route。
-> 驗收：cloudflared 服務健康、未登入阻擋、登入後 SSE、VM 重啟自動恢復、日誌遮蔽、備份與回復演練。
+> 安全限制：本版本沒有應用程式帳號，Cloudflare Access 是正式入口的必要保護；LiteLLM Admin UI、4000 Port、資料庫與任何 Secret 不可公開；具名 Tunnel 的 Connector Token 由我親自在終端機處理，不得進入 Prompt、Git、截圖或共用 Shell History。
+> 發布順序：先完成 localhost 的錄音檔上傳、STT 與 SSE 驗收，再檢查 cloudflared、建立具名 Tunnel、Access Application 及最小允許政策，最後才建立只指向會議系統的 Published Application Route。
+> 驗收：cloudflared 服務健康、未登入阻擋、登入後可完成上傳至匯出流程、VM 重啟自動恢復、暫存檔清理、日誌遮蔽與回復演練。
 > 先提出部署差異、停機風險、回復計畫與驗收順序，不要執行。
 
 ## 11. Recipe：分層故障診斷
 
 > 使用者看到的現象：[錯誤訊息與發生時間]。
 > 最近變更：[版本、設定或部署差異]。
-> 請按 Browser → Cloudflare Access → Tunnel → Next.js → LiteLLM → RAP 的順序診斷，每次只確認相鄰兩層。
+> 請按 Browser → Cloudflare Access → Tunnel → Next.js → LiteLLM → TAIWAN AI RAP STT／LLM 的順序診斷；先判斷問題屬於檔案上傳／轉錄或會議紀錄串流，再每次只確認相鄰兩層。
 > 優先執行唯讀檢查；任何重啟、設定修改、Rollback 或資料操作前先說明影響並等待確認。
 > 回報格式：時間線、已驗證事實、尚未驗證項目、最可能原因、下一個最小測試、暫時緩解與永久修正。不得輸出 Secret 或完整敏感 Prompt。
 

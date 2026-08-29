@@ -190,7 +190,7 @@ sudo systemctl is-active docker
 ```text
 ~/aicloud-course/
 ├── gateway/       # LiteLLM 設定與部署
-├── chatbot/       # Next.js 全端 Chatbot
+├── meeting-app/   # Next.js 會議轉錄與紀錄系統
 └── notes/         # 學習紀錄與非敏感檢查結果
 ```
 

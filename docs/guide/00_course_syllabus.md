@@ -4,7 +4,7 @@
 
 本課程以國研院 **晶創雲雲平台（AI-Cloud）** 為教學環境，帶領學員建立雲端 VM，透過 **Antigravity Remote SSH** 連線，使用自然語言協助檢查環境、安裝軟體、設定服務與驗證成果。
 
-完成基礎環境後，學員會先驗證 **TAIWAN AI RAP** 提供的模型 API，再部署 **LiteLLM Proxy**，將國網及其他已取得授權的模型統一為 OpenAI-compatible 介面。接著以 Prompt 引導 AI 協作建立串流 Chatbot，完成 GitHub 版本交付；開發期間使用 Antigravity **Ports** 預覽遠端 `localhost`，正式提供服務時再使用 **Cloudflare Tunnel** 與服務常駐機制發布。
+完成基礎環境後，學員會先驗證 **TAIWAN AI RAP** 提供的模型 API，再部署 **LiteLLM Proxy**，將國網及其他已取得授權的模型統一為 OpenAI-compatible 介面。接著以 Prompt 引導 AI 協作建立「錄音檔轉錄、人工修訂與 LLM 會議紀錄」系統，完成 GitHub 版本交付；開發期間使用 Antigravity **Ports** 預覽遠端 `localhost`，正式提供服務時再使用 **Cloudflare Tunnel** 與服務常駐機制發布。
 
 > **名稱說明：**「TAIWAN AI RAP」是服務名稱；「TAIWAN AI RAP API」是該服務提供的程式介面。教材首次出現時使用完整名稱，後文為了閱讀流暢才簡稱 RAP。
 
@@ -32,7 +32,7 @@
 3. 使用 Antigravity Ports 預覽遠端 VM 上的 `localhost` 開發服務。
 4. 透過 LiteLLM 將 TAIWAN AI RAP 與其他已授權模型整合成統一的模型 API Gateway。
 5. 向不同團隊與應用程式發放獨立 Virtual Key，分別管理模型權限、流量、期限、預算與使用紀錄。
-6. 以需求提示詞引導 AI 建立 Next.js 全端 Chatbot，而不是單純複製完整程式碼。
+6. 以分階段 Prompt 引導 AI 建立錄音檔轉錄與會議紀錄系統，而不是單純複製完整程式碼。
 7. 以 Prompt 完成 GitHub CLI 網頁授權、Secret 檢查與受控的版本交付。
 8. 使用 Cloudflare Tunnel 將正式服務安全發布到網際網路。
 
@@ -43,9 +43,9 @@
 | [第 1 章](/guide/01_aicloud_infrastructure_setup) | 晶創雲雲平台基礎設施與 VM 建立 | VM 為 `active`，完成 Console、浮動 IP／跳板機與 SSH 安全群組準備 |
 | [第 2 章](/guide/02_ssh_proxyjump_and_dev_env) | Antigravity Remote SSH、自然語言維運與 Ports 預覽 | 完成受控更新與 uv 等必要工具，並安全預覽測試服務 |
 | [第 3 章](/guide/03_litellm_gateway) | TAIWAN AI RAP 與 LiteLLM 多模型 API Gateway | 將國網、OpenAI、Anthropic Claude 等已授權上游統一為模型別名與單一 Endpoint |
-| [第 4 章](/guide/04_litellm_api_governance) | Virtual Key、多租戶權限與流量治理 | 為團隊與 Chatbot 發放不同權限、限額、期限及可撤銷的憑證 |
-| [第 5 章](/guide/05_nextjs_chatbot_with_ai) | 用 AI 協作建立 Next.js 全端 Chatbot | 完成串流 Chatbot，並以人工確認的 Prompt 流程交付到 GitHub |
-| [第 6 章](/guide/06_cloudflare_deployment) | Cloudflare Tunnel 與正式部署 | 以 HTTPS 網域持續提供受保護的 Chatbot |
+| [第 4 章](/guide/04_litellm_api_governance) | Virtual Key、多租戶權限與流量治理 | 為團隊與會議系統發放不同權限、限額、期限及可撤銷的憑證 |
+| [第 5 章](/guide/05_ai_meeting_transcription) | 用 Prompt 協作建立 AI 會議轉錄與紀錄系統 | 完成錄音檔上傳、STT、逐字稿修訂、串流會議紀錄及 GitHub 交付 |
+| [第 6 章](/guide/06_cloudflare_deployment) | Cloudflare Tunnel 與正式部署 | 以 HTTPS 網域持續提供受 Cloudflare Access 保護的會議系統 |
 
 ### 課程附錄
 
@@ -64,7 +64,7 @@
       │
       ▼
 [晶創雲 VM]
-├── Next.js Chatbot        127.0.0.1:3000
+├── Next.js 會議系統       127.0.0.1:3000
 └── LiteLLM Proxy          127.0.0.1:4000
           ├── TAIWAN AI RAP API
           ├── OpenAI API（選配、須經授權）
@@ -78,7 +78,7 @@
 [Cloudflare Access / Tunnel]
       │
       ▼
-[Next.js 正式服務 :3000]
+[Next.js 會議系統 :3000]
       │ 伺服器端專用 Virtual Key
       ▼
 [LiteLLM :4000（不直接公開）]
@@ -103,7 +103,7 @@
 
 - API Key 不貼入對話、不寫入程式碼、不提交 Git。
 - TAIWAN AI RAP API入口金鑰依計畫個別管理；不要與 Portal 的使用者金鑰或 LiteLLM Virtual Key 混用。
-- 瀏覽器只呼叫 Chatbot 後端，不直接取得 LiteLLM 或上游供應商金鑰。
+- 瀏覽器只呼叫會議系統的同源後端，不直接取得 LiteLLM 或上游供應商金鑰。
 - 開發服務透過 Antigravity Ports 預覽，不開放晶創雲的 3000、4000 等連接埠。
 - Cloudflare Tunnel 是網路入口，不取代登入、API 授權、流量限制與稽核。
 - 課程結束後停止或刪除不再使用的計費資源，並撤銷臨時金鑰。
