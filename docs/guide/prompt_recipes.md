@@ -130,7 +130,7 @@
 
 ## 12. Recipe：HostSpark 主機代理與持久定時排程
 
-> 背景與現況：我已在 VM 部署 HostSpark (`agy-telegram-bot`) 服務，並已於 `.env` 中設定 `ALLOWED_USER_ID` 與 `AGY_PERMISSION_MODE=safe`。
+> 背景與現況：我已在 VM 部署 HostSpark 服務，並已於 `.env` 中設定 `ALLOWED_USER_ID` 與 `AGY_PERMISSION_MODE=safe`。
 > 目標：規劃伺服器例行巡檢排程與 HostSpark 互動指令。
 > 技術限制：排程必須符合標準五欄 cron 語法，依據時區（如 Asia/Taipei）執行；例行無異常的巡檢必須使用 `[NO_REPORT]` 靜默回報；涉及系統管理命令時須遵守權限最小化原則。
 > 安全限制：不得將 Telegram Bot Token、API Key 或敏感憑證寫入排程內容中；非授權的 Telegram User ID 一律攔截拒絕。

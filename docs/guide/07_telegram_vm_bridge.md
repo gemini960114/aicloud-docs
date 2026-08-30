@@ -56,10 +56,10 @@
 ### 模式 A：HostSpark 環境自動部署與組態檢查
 
 ```markdown
-請協助我在這台晶創雲 Ubuntu VM 上部署 HostSpark (agy-telegram-bot) 專案：
+請協助我在這台晶創雲 Ubuntu VM 上部署 HostSpark 專案：
 
 1. 檢查系統是否已安裝 Python 3.10+、uv 與 agy CLI（執行 agy -p "reply ok" 驗證 CLI 可用）。
-2. 在家目錄下 clone 專案倉庫：git clone https://github.com/gemini960114/agy-telegram-bot.git ~/agy-telegram-bot。
+2. 在家目錄下 clone 專案倉庫：git clone https://github.com/gemini960114/HostSpark.git ~/HostSpark。
 3. 協助建立 .env 檔案範本，設定權限為 chmod 600 .env。
 4. 提示我手動填入 TELEGRAM_BOT_TOKEN 與 ALLOWED_USER_ID，切勿要求我將 Token 貼入對話。
 5. 執行 ./install.sh 進行依賴同步與 systemd 服務註冊，並檢查 sudo systemctl status agy-telegram.service。
@@ -108,8 +108,8 @@
 ```bash
 # 1. Clone 專案至家目錄
 cd ~
-git clone https://github.com/gemini960114/agy-telegram-bot.git
-cd agy-telegram-bot
+git clone https://github.com/gemini960114/HostSpark.git
+cd HostSpark
 
 # 2. 建立 .env 設定檔並鎖定權限
 cp .env.example .env
@@ -203,7 +203,7 @@ sudo systemctl stop agy-telegram.service
 4. 唯有經過管理員人工點擊確認，排程才會正式寫入 SQLite。
 
 #### B. 工作目錄隔離（Workspace Isolation）
-* 每個排程分配獨立工作目錄：`~/.local/state/agy-telegram-bot/workspaces/schedule-<ID>`。
+* 每個排程分配獨立工作目錄：`~/.local/state/hostspark/workspaces/schedule-<ID>`（或專案設定之 state 路徑）。
 * 執行時透過 `--add-dir` 開放主要專案目錄（`AGY_WORKDIR`）。
 * **優點**：排程執行不會使用一般對話的 `--continue` 階段，**絕不污染**使用者的日常對話歷史。
 
