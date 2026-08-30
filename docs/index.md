@@ -2,9 +2,9 @@
 layout: home
 
 hero:
-  name: "晶創雲雲平台 AI 應用開發課程"
-  text: "Antigravity × TAIWAN AI RAP × LiteLLM"
-  tagline: 從 AI 輔助遠端維運、多模型 API Gateway 與權限治理，到會議轉錄、Cloudflare 安全發布與 Telegram 行動 AIOps
+  name: "晶創雲 AI 應用開發課程"
+  text: "從模型治理、全端開發到行動維運"
+  tagline: "以國網晶創雲為核心，學習建置多模型 API 閘道、Next.js 語音轉錄串流、Cloudflare 安全發布與 Telegram 定時巡檢"
   actions:
     - theme: brand
       text: 查看課程地圖
