@@ -1,291 +1,274 @@
 # 第 3 章：TAIWAN AI RAP 與 LiteLLM 多模型 API Gateway
 
-本章先驗證 **TAIWAN AI RAP** 提供的模型 API，再將國網及其他已取得授權的模型放在同一個 LiteLLM Gateway 後方。Gateway 集中保管上游憑證；團隊與應用程式只取得 LiteLLM 發出的 Virtual Key，並透過一個 Base URL 與課程定義的模型別名呼叫服務。
+本章目標在於將 **國網 TAIWAN AI RAP API** 與其他授權模型集中整合至 **LiteLLM 多模型 API Gateway** 後方。Gateway 負責保管所有上游供應商的真實金鑰，並將不同供應商的模型統一映射為標準別名（如 `nchc-chat`、`meeting-stt`、`meeting-llm`）。應用程式僅需透過統一的 Base URL 與 Virtual Key 即可呼叫模型，實現金鑰集中管理與架構解耦。
 
-LiteLLM 支援許多供應商，但各家的模型、參數、串流與錯誤行為不一定完全相同。本章採取「先驗證 TAIWAN AI RAP，再逐一增加其他上游」的方式。當期資訊請以 [TAIWAN AI RAP API Guide](https://rap.genai.nchc.org.tw/doc?section=api-guide) 為準。
+---
 
-> **名稱說明：** TAIWAN AI RAP 是服務名稱；需要指稱程式介面時，本章使用「TAIWAN AI RAP API」。後文的 RAP 是服務簡稱。
-
-## 1. 先理解 Gateway 的角色
+## 1. Gateway 集中管理架構
 
 ```text
-[TAIWAN AI RAP API] ───────────┐
-[OpenAI API（選配）] ──────────┼──▶ [LiteLLM Proxy :4000]
-[Anthropic Claude API（選配）] ┘              │
-                                              ├── nchc-chat
-                                              ├── meeting-stt（語音轉錄）
-                                              ├── meeting-llm（會議整理）
-                                              ├── openai-chat／claude-chat（選配）
-                                              └── general-chat（選配路由別名）
-                                                       │
-                                                       ▼
-                                      [受控 Virtual Key 的團隊與應用程式]
+[上游模型供應商 / Provider]
+ ├── 國網 TAIWAN AI RAP API (Chat / STT / Whisper)
+ ├── OpenAI API (選配: GPT-4o / etc.)
+ └── Anthropic API (選配: Claude 3.5 Sonnet / etc.)
+              │
+              │ (持真實 Provider API Keys，受限私網)
+              ▼
+[LiteLLM Proxy Gateway :4000 (Docker 容器)]
+ ├── 統一模型別名路由：
+ │    ├── nchc-chat    ➔ 國網聊天模型
+ │    ├── meeting-stt  ➔ 國網語音轉錄 (Whisper/STT)
+ │    ├── meeting-llm  ➔ 國網會議摘要 (LLM)
+ │    └── openai-chat  ➔ (選配) OpenAI 模型
+ ├── 集中治理：Master Key 管理、RPM/TPM 限流、成本與使用量追蹤
+              │
+              │ (發放受限 Virtual Key，僅綁定必要別名)
+              ▼
+[應用程式與團隊端]
+ ├── Next.js 會議轉錄系統 (第 5、6 章)
+ └── 其他內部應用 / 開發人員
 ```
 
-LiteLLM 可以協助統一：
+---
 
-- 呼叫 Endpoint 與驗證方式
-- 應用程式看到的模型別名
-- 串流回應格式
-- Retry、Timeout、Fallback 與路由
-- Virtual Key、流量限制及使用紀錄
+## 2. 🤖 自然語言 Prompt 配方（可直接複製給 AI Agent）
 
-它不會自動保證不同模型的答案品質、功能或資料政策相同，這些仍需由管理者驗證。
+在 Antigravity 終端機中，你可以直接複製以下 Prompt 讓 AI 協助規劃、部署與測試 LiteLLM Gateway：
 
-### 本課程要完成的 Gateway 成果
+### 模式 A：國網 TAIWAN AI RAP API 連線與模型清單探測
 
-本章不是單純安裝 LiteLLM，也不是把同一組上游 API Key 複製給所有人。完成後應能：
+```markdown
+請協助我驗證目前遠端主機與國網 TAIWAN AI RAP API 的連線狀態：
 
-1. 將 TAIWAN AI RAP API 設為主要上游。
-2. 視課程可用授權加入 OpenAI、Anthropic Claude 或其他模型 API。
-3. 用模型別名隱藏上游實際 Model ID，讓應用程式不必跟著供應商設定變動。
-4. 只讓 LiteLLM 持有上游 API Key。
-5. 在下一章向不同團隊與應用程式發放各自的 Virtual Key，分別限制模型、流量、期限及預算。
-
-> **授權邊界：** LiteLLM 提供集中管理與受控分發的技術能力，不會自動授予 API 轉售、轉借或公開分享權利。本課程只在帳號、計畫與各供應商條款允許的範圍內，建立內部 AI API Gateway。
-
-## 2. 先取得 TAIWAN AI RAP API入口金鑰
-
-依 TAIWAN AI RAP 官方文件，先登入 [Lightweight Portal](https://portal.genai.nchc.org.tw/login)，完成：
-
-1. 使用 iService 帳號登入。
-2. 選擇具備可用餘額的計畫。
-3. 查看該計畫可使用的模型清單。
-4. 在「API入口」建立或管理 API入口金鑰。
-5. 記錄該計畫畫面提供的 API Base URL 與可用 Model ID。
-
-RAP 模型請求使用 **API入口金鑰**作為 Bearer Token。Portal 另有用於管理或查詢功能的使用者金鑰，兩者不要混用；實際名稱與權限以 Portal 畫面為準。
-
-金鑰應由學員在遠端終端機安全寫入 `.env`，不要貼入 Antigravity 對話、課堂截圖或共用文件。
-
-## 3. TAIWAN AI RAP API 範圍
-
-TAIWAN AI RAP API Guide 目前列出：
-
-| API 類別 | 主要用途 | 本課程 |
-| :--- | :--- | :--- |
-| Models | 取得計畫可用模型 | 必做 |
-| Chat Completions | 以 `messages` 產生對話回覆 | 必做 |
-| Embeddings | 將文字轉成向量 | 延伸 |
-| Audio／Transcriptions | 將錄音檔轉成文字 | 第 5 章必做 |
-| Audio／Speech | 將文字轉成語音 | 延伸 |
-| Rerank | 依 Query 重排文件 | 延伸 |
-| Image | 圖片生成與編輯 | 延伸 |
-| Completions | 舊式文字補全 | Legacy，不作主流程 |
-
-本課程要求 **Models＋Chat Completions＋Audio Transcriptions**：Chat Completions 用於整理會議紀錄，Audio Transcriptions 用於第 5 章的錄音檔轉錄。不要把 STT、TTS、Rerank 或 Image 當成聊天模型；它們有不同 Endpoint、Request Body 與回應格式。
-
-官方 Chat Completions 規格重點：
-
-- `POST /chat/completions`
-- Bearer API Key 驗證
-- `model`：從計畫可用模型清單選擇
-- `messages`：每筆包含 `role` 與 `content`
-- `max_tokens`：限制最多生成 Token
-- `temperature`：官方文件目前說明範圍為 0 至 1
-- `stream`：是否使用 SSE；未提供時預設為 `false`
-
-Base URL 應直接複製自己計畫「API入口」顯示的值，不在教材硬編固定環境。組合 Endpoint 時要避免重複附加 `/api/v1` 或 `/v1`。
-
-## 4. 蒐集其他上游 API 資訊
-
-每一個上游至少需要：
-
-| 欄位 | 說明 |
-| :--- | :--- |
-| Provider／協定 | LiteLLM 原生 Provider，或 OpenAI-compatible Endpoint |
-| Base URL | 上游 API 的服務位址 |
-| Model ID | 上游實際接受的模型名稱 |
-| API Key | 只存於伺服器端環境變數 |
-| 功能 | Chat、Streaming、Audio Transcriptions、Embedding、Tool Calling 等 |
-| 限制 | RPM、TPM、Context、資料政策與費率 |
-
-不要從舊教材複製 Base URL 或模型名稱。請使用帳號後台、講師提供資料及供應商官方文件確認當期資訊。
-
-## 5. 先直接測試 TAIWAN AI RAP API
-
-在加入 LiteLLM 前，先依 TAIWAN AI RAP 官方文件直接測試：
-
-- DNS 與 TLS 可連線
-- Bearer API入口金鑰有效
-- `GET /models` 可取得該計畫可用模型
-- Chat 與 STT 使用的 Model ID 確實存在於回傳清單
-- 使用無敏感資訊的課堂短音檔直接呼叫 Audio Transcriptions 成功
-- 非串流 Chat 可回覆
-- 串流 Chat 可正常結束
-- 錯誤時會回傳可辨識的 HTTP 狀態
-
-建議請 Antigravity 協助，但不要把 Key 放進提示詞：
-
-> 請先閱讀 TAIWAN AI RAP API Guide 與目前專案中的 .env.example，提出一個不顯示、不記錄 API入口金鑰的連線測試計畫。先以 GET /models 確認可用 Model ID，再測試 Audio Transcriptions 短音檔，以及 Chat Completions 的非串流、SSE 串流、錯誤模型名稱與未授權請求。Base URL 必須使用我在計畫 API入口取得的環境變數，不可自行猜測或寫死。先列出預期結果，不要執行。
-
-若直接呼叫尚未成功，不要急著加入 LiteLLM，否則會同時排查兩層問題。
-
-## 6. 建立 LiteLLM 專案
-
-建議目錄：
-
-```text
-~/aicloud-course/gateway/
-├── compose.yaml
-├── config.yaml
-├── .env
-├── .env.example
-└── README.md
+1. 讀取環境變數中的 NCHC_API_BASE 與 NCHC_API_KEY（請勿在日誌中明文顯示 Key）。
+2. 發送 GET 請求至 <NCHC_API_BASE>/models 取得目前專案可用的 Model ID 清單。
+3. 發送一次簡單的 POST /chat/completions 測試請求，驗證對話回應正常。
+4. 整理回傳的可用模型名稱清單（如 Chat 模型與 STT 模型 ID），供後續 LiteLLM 設定檔使用。
 ```
 
-`.env` 保存真正的 Secret；`config.yaml` 只引用環境變數。
+### 模式 B：LiteLLM Gateway Docker 部署與設定檔產生
 
-基本概念如下，實際 Provider 前綴、參數與映像版本請依 [LiteLLM 官方文件](https://docs.litellm.ai/)及國網 API 相容性測試調整：
+```markdown
+請在 ~/aicloud-course/gateway 目錄下協助我建立 LiteLLM Gateway 的 Docker Compose 部署配置：
 
-```yaml
+1. 建立 .env 範本，包含隨機產生的高強度 LITELLM_MASTER_KEY、NCHC_API_BASE 與 NCHC_API_KEY。
+2. 建立 config.yaml：
+   - 建立 nchc-chat 別名（指向國網 Chat 模型）。
+   - 建立 meeting-stt 別名（指向國網 STT 轉錄模型，指定 mode: audio_transcription）。
+   - 建立 meeting-llm 別名（指向國網 LLM 會議摘要模型）。
+   - 設定 general_settings 引用環境變數中的 master_key。
+3. 建立 compose.yaml，將 LiteLLM 容器鎖定監聽 127.0.0.1:4000，掛載 config.yaml 與 .env。
+4. 啟動容器並驗證健康檢查端點（http://127.0.0.1:4000/health/readiness）。
+```
+
+### 模式 C：多模型別名路由與 SSE 串流驗收
+
+```markdown
+請對剛啟動的 LiteLLM Gateway 進行全面驗收測試：
+
+1. 測試 nchc-chat：使用 Master Key 呼叫 http://127.0.0.1:4000/v1/chat/completions，驗證非串流回應。
+2. 測試 meeting-llm 串流：啟用 stream: true，驗證 Server-Sent Events (SSE) 文字流能逐段接收並正常結束。
+3. 測試 meeting-stt：使用一個短音檔發送 POST /v1/audio/transcriptions 進行語音轉錄測試。
+4. 測試異常處理：使用錯誤的 API Key 呼叫，驗證 Gateway 能正確回傳 401 Unauthorized。
+5. 輸出測試摘要報告，確保日誌中不含敏感金鑰。
+```
+
+---
+
+## 3. 💻 終端機手動執行指令 (Manual Commands & Step-by-Step)
+
+### Step 1：手動直接測試國網 TAIWAN AI RAP API
+
+在建置 Gateway 前，先確認國網 API 入口金鑰與連線無誤：
+
+```bash
+# 1. 設定臨時環境變數 (請替換為你在 Lightweight Portal 取得的實際值)
+export NCHC_API_BASE="https://rap.genai.nchc.org.tw/api/v1" # 依 Portal 實際 Base URL 為準
+export NCHC_API_KEY="your-nchc-api-key"
+
+# 2. 查詢該計畫可用的模型清單
+curl -s -X GET "${NCHC_API_BASE}/models" \
+  -H "Authorization: Bearer ${NCHC_API_KEY}" | jq .
+
+# 3. 測試單次聊天對話 (Chat Completions)
+curl -s -X POST "${NCHC_API_BASE}/chat/completions" \
+  -H "Authorization: Bearer ${NCHC_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "<填入步驟2查到的 Chat Model ID>",
+    "messages": [{"role": "user", "content": "你好，請說一句測試訊息"}]
+  }' | jq .
+```
+
+---
+
+### Step 2：建立 LiteLLM Gateway 專案目錄與環境變數
+
+```bash
+# 1. 建立專案目錄
+mkdir -p ~/aicloud-course/gateway
+cd ~/aicloud-course/gateway
+
+# 2. 產生高強度隨機 Master Key
+MASTER_KEY=$(openssl rand -hex 16)
+echo "產生的 Master Key: sk-$MASTER_KEY"
+
+# 3. 建立 .env 檔案
+cat <<EOF > .env
+LITELLM_MASTER_KEY=sk-${MASTER_KEY}
+NCHC_API_BASE=${NCHC_API_BASE}
+NCHC_API_KEY=${NCHC_API_KEY}
+# 選配上游 (若有可填入，若無可留空)
+OPENAI_API_KEY=
+ANTHROPIC_API_KEY=
+EOF
+
+# 4. 鎖定 .env 權限
+chmod 600 .env
+```
+
+---
+
+### Step 3：建立 LiteLLM 設定檔 (`config.yaml`)
+
+建立標準模型別名設定檔：
+
+```bash
+cat <<'EOF' > config.yaml
 model_list:
+  # 1. 國網主要對話模型別名
   - model_name: nchc-chat
     litellm_params:
-      model: openai/<UPSTREAM_MODEL_ID>
+      model: openai/<填入實際國網 Chat Model ID>
       api_base: os.environ/NCHC_API_BASE
       api_key: os.environ/NCHC_API_KEY
 
-general_settings:
-  master_key: os.environ/LITELLM_MASTER_KEY
-```
-
-安全要求：
-
-- `LITELLM_MASTER_KEY` 使用高強度隨機值，不使用教材範例。
-- 上游 Key 與 Master Key 都不寫在 YAML、README 或 Git。
-- LiteLLM 初期只監聽 `127.0.0.1:4000`。
-- 不使用浮動的 `latest` 容器標籤作正式部署；鎖定課程驗證版本。
-
-## 7. 請 Antigravity 協助部署
-
-第一個提示詞：
-
-> 請檢查 ~/aicloud-course/gateway，根據 TAIWAN AI RAP API Guide 與 LiteLLM 官方文件規劃 Docker Compose 部署。先確認 RAP Base URL 的版本路徑不會重複，並以 GET /models 驗證實際 Model ID。LiteLLM 只能監聽 127.0.0.1:4000，config.yaml 只能引用環境變數，真正金鑰放在不納入 Git 的 .env。請先提出檔案清單、映像版本、健康檢查、啟停與驗證方式，不要建立檔案。
-
-審閱後再執行：
-
-> 依照已確認的計畫逐步建立 Gateway。每建立一個檔案先顯示不含 Secret 的差異；啟動後檢查容器狀態與健康端點。輸出日誌時必須遮蔽 Authorization、Cookie、API Key 與完整 Prompt。
-
-## 8. 建立會議應用必要別名並驗證統一 API
-
-先在已驗證的 RAP 上游加入第 5 章需要的兩個固定別名。以下只呈現設定形狀；`<...>` 必須換成該計畫 `GET /models` 實際回傳且已直接測試成功的 Model ID：
-
-```yaml
-model_list:
-  - model_name: nchc-chat
-    litellm_params:
-      model: openai/<RAP_MODEL_ID>
-      api_base: os.environ/NCHC_API_BASE
-      api_key: os.environ/NCHC_API_KEY
-
+  # 2. 會議轉錄專用 STT 模型別名 (語音轉文字)
   - model_name: meeting-stt
     litellm_params:
-      model: openai/<RAP_STT_MODEL_ID>
+      model: openai/<填入實際國網 STT Model ID>
       api_base: os.environ/NCHC_API_BASE
       api_key: os.environ/NCHC_API_KEY
     model_info:
       mode: audio_transcription
 
+  # 3. 會議摘要專用 LLM 模型別名 (文字整理)
   - model_name: meeting-llm
     litellm_params:
-      model: openai/<RAP_LLM_MODEL_ID>
+      model: openai/<填入實際國網 LLM Model ID>
       api_base: os.environ/NCHC_API_BASE
       api_key: os.environ/NCHC_API_KEY
+
+  # 4. (選配) OpenAI 模型別名
+  # - model_name: openai-chat
+  #   litellm_params:
+  #     model: openai/gpt-4o-mini
+  #     api_key: os.environ/OPENAI_API_KEY
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+
+litellm_settings:
+  drop_params: true
+  set_verbose: false
+EOF
 ```
 
-[LiteLLM 官方 Audio Transcriptions 文件](https://docs.litellm.ai/docs/audio_transcription)使用 `model_info.mode: audio_transcription` 標示音訊轉錄模型。RAP 雖提供 OpenAI-compatible API，仍需以課程鎖定的 LiteLLM 版本實測 Provider 前綴、`api_base`、multipart 轉送與回應格式；設定檔可載入不等於音訊代理已相容。
+> [!TIP]
+> 請務必將 `<填入實際國網 Model ID>` 替換為你在 `GET /models` 實際查詢到的模型名稱（如 `Llama-3.1-8B-Instruct` 或 `whisper-large-v3`）。
 
-至少完成以下測試：
+---
 
-1. 使用 Master Key 呼叫 `nchc-chat` 成功。
-2. 使用無敏感資訊的短音檔呼叫 `meeting-stt` 成功。
-3. `meeting-llm` 的非串流與 SSE 呼叫成功。
-4. 錯誤 Key 回傳 401／403，而不是進入上游。
-5. 不存在的模型別名回傳明確錯誤。
-6. Streaming 能逐段傳回並正常結束。
-7. LiteLLM 重新啟動後設定仍存在。
-8. 上游 API 暫時失敗時，能在日誌中定位是 Gateway 或 Provider 問題。
+### Step 4：建立 `compose.yaml` 並啟動服務
 
-開發階段如需查看 LiteLLM UI 或 API 文件，可透過 Antigravity Ports 暫時預覽 4000，不要在晶創雲開放公網 Ingress。
+```bash
+cat <<'EOF' > compose.yaml
+version: '3.8'
 
-## 9. 選配：加入其他授權上游
+services:
+  litellm:
+    image: ghcr.io/berriai/litellm:main-v1.40.0 # 建議鎖定穩定版本
+    container_name: aicloud-litellm
+    restart: always
+    ports:
+      - "127.0.0.1:4000:4000" # 僅監聽本機 localhost，禁止對外暴露
+    env_file:
+      - .env
+    volumes:
+      - ./config.yaml:/app/config.yaml
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
 
-TAIWAN AI RAP 與三個必要別名通過全部測試後，才依實際授權加入 OpenAI、Anthropic Claude 或其他供應商。課堂不要求每位學員持有第二家供應商帳號；沒有額外授權時，完成 RAP、Virtual Key 與會議系統流程即可完成核心練習，多供應商比較改為選修。
+EOF
 
-以下設定接續附加到既有 `model_list`，只呈現組合方式；`<...>` 必須換成帳號後台當期可用的 Model ID，真正金鑰仍放在 `.env`：
+# 啟動 LiteLLM 容器
+docker compose up -d
 
-```yaml
-model_list:
-  - model_name: openai-chat
-    litellm_params:
-      model: openai/<OPENAI_MODEL_ID>
-      api_key: os.environ/OPENAI_API_KEY
-
-  - model_name: claude-chat
-    litellm_params:
-      model: anthropic/<ANTHROPIC_MODEL_ID>
-      api_key: os.environ/ANTHROPIC_API_KEY
+# 檢查容器狀態與日誌
+docker compose ps
+docker compose logs --tail=20
 ```
 
-實際 Provider 前綴與參數以 [LiteLLM Providers 文件](https://docs.litellm.ai/docs/providers)為準。不要因為範例出現 OpenAI 或 Anthropic，就假設學員已取得相關 API 使用或再分發授權。
+---
 
-為不同用途建立穩定別名，例如：
+### Step 5：透過 LiteLLM Gateway 驗收統一 API
 
-- `nchc-chat`
-- `meeting-stt`
-- `meeting-llm`
-- `openai-chat`
-- `claude-chat`
-- `general-chat`
-- `embedding`
+現在所有請求都改向 Gateway 發送，驗證模型別名路由是否正常生效：
 
-`meeting-stt` 與 `meeting-llm` 是第 5 章固定使用的應用別名；其他指定上游別名方便驗證與權限管理。`general-chat` 才適合依政策配置多個部署、負載平衡或備援。不要直接把供應商當期的完整 Model ID 散布在所有應用程式。模型別名讓管理者可以在 Gateway 調整後端，而不必同步修改每一個使用端。
+```bash
+# 1. 讀取剛才產生的 Master Key
+source .env
 
-新增後依 Endpoint 分開測試：
+# 2. 測試 Gateway 健康檢查端點
+curl -s http://127.0.0.1:4000/health/readiness
 
-- Chat 模型是否接受預期的 `messages`、參數與 SSE
-- STT 模型是否接受實際音訊格式、multipart 欄位與檔案大小
-- 不把 Chat Request 傳給 STT，也不把音訊上傳傳給 Chat 模型
-- 各模型的 Timeout 與錯誤格式
-- Token、請求數與費率資料是否可正確記錄
-- 錄音、逐字稿與 Prompt 是否允許傳送至該供應商
+# 3. 測試 nchc-chat 模型別名
+curl -s -X POST "http://127.0.0.1:4000/v1/chat/completions" \
+  -H "Authorization: Bearer ${LITELLM_MASTER_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "nchc-chat",
+    "messages": [{"role": "user", "content": "測試 LiteLLM Gateway 對話"}]
+  }' | jq .
 
-建議提示詞：
+# 4. 測試 meeting-llm SSE 串流輸出
+curl -N -X POST "http://127.0.0.1:4000/v1/chat/completions" \
+  -H "Authorization: Bearer ${LITELLM_MASTER_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "meeting-llm",
+    "messages": [{"role": "user", "content": "請從 1 數到 5"}],
+    "stream": true
+  }'
 
-> 請根據 LiteLLM 官方 Provider 文件與目前 `.env.example`，規劃把我已取得授權的其他上游加入既有 Gateway。不得假設我一定持有 OpenAI 或 Anthropic Claude 帳號；只處理我明確確認可用的 Provider。保留第 5 章需要的 `meeting-stt`、`meeting-llm` 與 `nchc-chat`，為新增上游建立獨立別名；真正 Model ID 與金鑰只從環境變數取得。先列出必要欄位、相容性測試、資料政策與失敗停損點，不要讀取 Secret，也不要立即修改檔案。
+# 5. 測試錯誤 API Key 攔截 (預期回傳 401)
+curl -s -o /dev/null -w "%{http_code}\n" -X POST "http://127.0.0.1:4000/v1/chat/completions" \
+  -H "Authorization: Bearer sk-invalid-key" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "nchc-chat", "messages": []}'
+```
 
-## 10. RAP 非聊天模型要獨立驗證
+---
 
-RAP 官方特殊模型文件提供以下例子：
+## 4. 敏感金鑰治理矩陣
 
-- STT／ASR：`POST /audio/transcriptions`，使用 multipart 上傳音訊檔；這是第 5 章必做項目。
-- TTS：`POST /audio/speech`，回傳二進位音訊；官方明確不建議使用 SSE。
-- Rerank：`POST /rerank`，輸入 `query`、`documents` 與 `top_n`。
-- Safeguard：需要在 Policy Prompt 明確定義指令、定義、違規／安全標準、範例與輸出格式。
+| 金鑰類型 | 存放位置 | 持有者 | 授權邊界 |
+| :--- | :--- | :--- | :--- |
+| **Provider API Key**<br>(國網 API 入口金鑰 / OpenAI Key) | Gateway 伺服器端 `.env` | 僅 LiteLLM 服務內部 | 具備上游帳號完整計費權限，**嚴禁流出伺服器** |
+| **LiteLLM Master Key** | Gateway 伺服器端 `.env` | 系統管理員 (Admin) | 具備 Gateway 完整管理權（發放金鑰、修改費率） |
+| **Virtual Key (虛擬金鑰)**<br>(第 4 章產生) | 應用程式設定 / 使用者終端 | 開發團隊 / Next.js 應用 | **受限存取**：僅限特定模型別名、設定 RPM/TPM 與預算上限 |
 
-第 5 章會使用 Audio Transcriptions；TTS、Rerank 與 Safeguard 則列為延伸。每一項都要獨立驗證 LiteLLM Provider 支援、請求格式與資料政策，不應只更換 `model` 就假設能沿用同一流程。
+---
 
-## 11. OpenAI-compatible 的範圍
+## 5. 🎯 本章完成檢核清單 (Checklist)
 
-本課程主要使用 Chat Completions 風格的 `messages` 與串流回應，因為這通常是第三方 Gateway 的共同相容面。OpenAI 官方 API 本身仍持續演進；「OpenAI-compatible」只表示特定介面形狀相容，不代表所有 OpenAI 功能或模型行為皆相同。
+請確認以下項目均已順利通過：
 
-可參考[OpenAI Chat Completions API Reference](https://developers.openai.com/api/reference/resources/chat/subresources/completions)，並以 LiteLLM 與實際上游文件確認支援範圍。
+- [ ] **國網連線**：已從 Lightweight Portal 取得 API入口金鑰，並以 `curl` 直接測試 `GET /models` 成功。
+- [ ] **目錄與金鑰**：已建立 `~/aicloud-course/gateway`，產生隨機 Master Key，且 `.env` 權限鎖定為 600。
+- [ ] **模型別名**：`config.yaml` 已成功映射 `nchc-chat`、`meeting-stt` 與 `meeting-llm`。
+- [ ] **容器運行**：LiteLLM 容器成功啟動且僅綁定 `127.0.0.1:4000`。
+- [ ] **統一 API 驗證**：已透過 Gateway 成功驗收非串流對話、SSE 串流輸出與 401 錯誤攔截。
+- [ ] **Ports 預覽 (選用)**：若需查看 LiteLLM Swagger 文件或 UI，可透過 Antigravity Ports 預覽 4000。
 
-## 12. 本章完成條件
-
-- [ ] 已從 Lightweight Portal 選擇正確計畫並建立 API入口金鑰
-- [ ] `GET /models` 已確認實際可用 Model ID
-- [ ] RAP Chat Completions 在 LiteLLM 之外直接測試成功
-- [ ] LiteLLM 只監聽遠端 localhost
-- [ ] `.env` 未加入 Git
-- [ ] `nchc-chat` 非串流與串流測試成功
-- [ ] TAIWAN AI RAP STT 已用無敏感資訊的短音檔直接測試成功
-- [ ] `meeting-stt` 已透過 LiteLLM 完成 Audio Transcriptions 測試
-- [ ] `meeting-llm` 已完成非串流與 SSE 測試
-- [ ] 選修多供應商時已驗證其他授權模型；未選修時已明確記錄核心流程只使用 RAP
-- [ ] 每個上游都有獨立別名，應用程式不需要知道上游 API Key
-- [ ] 已分別測試指定上游別名；尚未驗證前不啟用跨供應商 Fallback
-- [ ] 學員能說明 Base URL、上游 Key、Master Key 與模型別名的差異
-
-下一章將進一步設定 [API 金鑰與服務治理](/guide/04_litellm_api_governance)。
+> [!TIP]
+> 下一步：前往 [第 4 章：LiteLLM API 治理、權限控管與資料庫持久化](/guide/04_litellm_api_governance)，將 SQLite 升級為 PostgreSQL，並為會議系統發放專屬的受控 Virtual Key！
