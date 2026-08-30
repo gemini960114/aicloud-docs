@@ -4,7 +4,7 @@ layout: home
 hero:
   name: "晶創雲雲平台 AI 應用開發課程"
   text: "Antigravity × TAIWAN AI RAP × LiteLLM"
-  tagline: 從 AI 輔助遠端維運、多模型 API Gateway 與權限治理，到錄音轉錄、會議紀錄、GitHub 版本交付及 Cloudflare 安全發布
+  tagline: 從 AI 輔助遠端維運、多模型 API Gateway 與權限治理，到會議轉錄、Cloudflare 安全發布與 Telegram 行動 AIOps
   actions:
     - theme: brand
       text: 查看課程地圖
@@ -44,4 +44,9 @@ features:
     details: 將會議系統轉為可持續運作的正式服務，以 Cloudflare Access 保護沒有內建帳號的應用，再透過 Tunnel 發布。
     link: /guide/06_cloudflare_deployment
     linkText: 發布正式服務
+  - icon: 🤖
+    title: 第 7 章｜Telegram × AGY 行動維運
+    details: 部署 Telegram 輕量橋接器，結合主機級定時排程與 AGY CLI，實現手機端 24 小時伺服器巡檢與遙控維運。
+    link: /guide/07_telegram_vm_bridge
+    linkText: 探索行動維運
 ---

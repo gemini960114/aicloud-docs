@@ -4,91 +4,91 @@
 
 本課程以國研院 **晶創雲雲平台（AI-Cloud）** 為教學環境，帶領學員建立雲端 VM，透過 **Antigravity Remote SSH** 連線，使用自然語言協助檢查環境、安裝軟體、設定服務與驗證成果。
 
-完成基礎環境後，學員會先驗證 **TAIWAN AI RAP** 提供的模型 API，再部署 **LiteLLM Proxy**，將國網及其他已取得授權的模型統一為 OpenAI-compatible 介面。接著以 Prompt 引導 AI 協作建立「錄音檔轉錄、人工修訂與 LLM 會議紀錄」系統，完成 GitHub 版本交付；開發期間使用 Antigravity **Ports** 預覽遠端 `localhost`，正式提供服務時再使用 **Cloudflare Tunnel** 與服務常駐機制發布。
+課程包含兩大實戰主軸：
+1. **對外 Web AI 應用**：先驗證 **TAIWAN AI RAP** 模型 API，部署 **LiteLLM Gateway** 實現多模型統一管理與 Virtual Key 治理，接著以 Prompt 協作開發「錄音檔轉錄與 LLM 會議紀錄系統」，並透過 **Cloudflare Tunnel + Zero Trust Access** 安全發布至公網。
+2. **對內 AIOps 行動維運（進階）**：在 Linux VM 部署 **Telegram → Antigravity CLI (`agy`) 安全橋接器**，利用主機級定時排程（Host-level Scheduler）實現 24 小時無人值守的伺服器巡檢與手機端遙控。
 
-> **名稱說明：**「TAIWAN AI RAP」是服務名稱；「TAIWAN AI RAP API」是該服務提供的程式介面。教材首次出現時使用完整名稱，後文為了閱讀流暢才簡稱 RAP。
+> **名稱說明：**「TAIWAN AI RAP」是服務名稱；「TAIWAN AI RAP API」是該服務提供的程式介面。教材首次出現時使用完整名稱，後文簡稱 RAP。
 
-> 本課程教的是「受治理的 API Gateway」，不是共用、轉售或轉借供應商帳號。所有上游 API 都必須符合帳號、專案及供應商的授權範圍。
+---
 
 ## 適合對象
 
 - 想認識晶創雲雲平台 VM 與網路環境的開發者或研究人員
 - 想用 AI 輔助完成 Linux 操作與應用開發的初學者
 - 想統一管理多個模型 API 的平台或應用開發人員
-- 具備基本終端機概念，但不要求先熟悉 React、Next.js 或 LiteLLM
+- 想透過手機通訊軟體（Telegram）遠端監控伺服器與排程任務的維運人員
+
+---
 
 ## 課前準備
 
 - 可登入晶創雲雲平台，並已加入具備可用配額的專案
 - 可在個人電腦安裝 Antigravity IDE
-- 具備 iService／TAIWAN AI RAP 使用資格、可用計畫，以及由 Lightweight Portal 建立的 API入口金鑰
-- 若要練習多供應商路由：另備至少一組經授權的模型 API Endpoint、模型名稱與 API Key
-- 若要完成正式發布：可使用 Cloudflare Zero Trust，並有可管理的網域
+- 具備 iService／TAIWAN AI RAP 使用資格、可用計畫與 API入口金鑰
+- 若要完成第 6 章正式發布：可使用 Cloudflare Zero Trust，並有可管理的網域
+- 若要完成第 7 章行動維運：具備 Telegram 帳號，並可向 `@BotFather` 申請 Bot Token
+
+---
 
 ## 完成後能做到什麼
 
-1. 建立並安全登入晶創雲雲平台 VM。
+1. 建立並安全登入晶創雲雲平台 VM，配置嚴格的安全群組。
 2. 使用 Antigravity Remote SSH 與自然語言協助完成受控的系統操作。
 3. 使用 Antigravity Ports 預覽遠端 VM 上的 `localhost` 開發服務。
-4. 透過 LiteLLM 將 TAIWAN AI RAP 與其他已授權模型整合成統一的模型 API Gateway。
-5. 向不同團隊與應用程式發放獨立 Virtual Key，分別管理模型權限、流量、期限、預算與使用紀錄。
-6. 以分階段 Prompt 引導 AI 建立錄音檔轉錄與會議紀錄系統，而不是單純複製完整程式碼。
-7. 以 Prompt 完成 GitHub CLI 網頁授權、Secret 檢查與受控的版本交付。
-8. 使用 Cloudflare Access 與 Tunnel，將正式服務以受控身分入口安全發布到網際網路。
+4. 透過 LiteLLM 將 TAIWAN AI RAP 與其他授權模型整合成統一的模型 API Gateway。
+5. 向不同團隊與應用程式發放獨立 Virtual Key，分別管理模型權限、流量、期限與預算。
+6. 以分階段 Prompt 引導 AI 建立錄音檔轉錄與會議紀錄系統，並安全交付至 GitHub。
+7. 使用 Cloudflare Access 與 Tunnel，將正式 Web 服務以零信任身分驗證安全發布到網際網路。
+8. 部署 Telegram × AGY CLI 輕量橋接器，利用確定性排程與自然語言推理實現手機端伺服器自主維運。
+
+---
 
 ## 課程章節
 
 | 章節 | 主題 | 主要成果 |
 | :--- | :--- | :--- |
 | [第 1 章](/guide/01_aicloud_infrastructure_setup) | 晶創雲雲平台基礎設施與 VM 建立 | VM 為 `active`，完成 Console、浮動 IP／跳板機與 SSH 安全群組準備 |
-| [第 2 章](/guide/02_ssh_proxyjump_and_dev_env) | Antigravity Remote SSH、自然語言維運與 Ports 預覽 | 完成受控更新與 uv 等必要工具，並安全預覽測試服務 |
+| [第 2 章](/guide/02_ssh_proxyjump_and_dev_env) | Antigravity Remote SSH、自然語言維運與 Ports 預覽 | 完成受控更新、Docker、Node.js 與 uv 等必要工具，並安全預覽測試服務 |
 | [第 3 章](/guide/03_litellm_gateway) | TAIWAN AI RAP 與 LiteLLM 多模型 API Gateway | 將國網、OpenAI、Anthropic Claude 等已授權上游統一為模型別名與單一 Endpoint |
 | [第 4 章](/guide/04_litellm_api_governance) | Virtual Key、多租戶權限與流量治理 | 為團隊與會議系統發放不同權限、限額、期限及可撤銷的憑證 |
 | [第 5 章](/guide/05_ai_meeting_transcription) | 用 Prompt 協作建立 AI 會議轉錄與紀錄系統 | 完成錄音檔上傳、STT、逐字稿修訂、串流會議紀錄及 GitHub 交付 |
 | [第 6 章](/guide/06_cloudflare_deployment) | Cloudflare Tunnel 與正式部署 | 以 HTTPS 網域持續提供受 Cloudflare Access 保護的會議系統 |
+| [第 7 章](/guide/07_telegram_vm_bridge) | Antigravity CLI (AGY) × Telegram 行動維運與自動排程 | 部署輕量 Telegram 橋接器，結合主機排程實現手機端 AIOps 伺服器監控與維運 |
 
 ### 課程附錄
 
 - [AI 協作提示詞模板庫](/guide/prompt_recipes)：把背景、目標、限制、驗收與停損點組合成可重複使用的 Prompt Recipe。
 
-## 最終架構
+---
+
+## 全系列核心架構圖
 
 ```text
-開發階段
-────────
-[學員瀏覽器]
-      ▲
-      │ Antigravity Ports（私人預覽）
-      │
-[Antigravity Remote SSH]
-      │
-      ▼
-[晶創雲 VM]
-├── Next.js 會議系統       127.0.0.1:3000
-└── LiteLLM Proxy          127.0.0.1:4000
-          ├── TAIWAN AI RAP API
-          ├── OpenAI API（選配、須經授權）
-          └── Anthropic Claude API（選配、須經授權）
-
-正式服務
-────────
-[外部使用者]
-      │ HTTPS
-      ▼
-[Cloudflare Access]
-      │ 身分驗證與存取政策
-      ▼
-[Cloudflare Tunnel]
-      │
-      ▼
-[Next.js 會議系統 :3000]
-      │ 伺服器端專用 Virtual Key
-      ▼
-[LiteLLM :4000（不直接公開）]
-      ├── TAIWAN AI RAP API
-      ├── OpenAI API（選配、須經授權）
-      └── Anthropic Claude API（選配、須經授權）
+┌────────────────────────────────────────────────────────────────────────┐
+│                          學員本機 / 管理員手機                           │
+│   ├── Antigravity Remote SSH (開發預覽: localhost:3000)                │
+│   ├── 外部使用者瀏覽器 (正式發布: meeting.yourdomain.com via Access)     │
+│   └── 管理員 Telegram App (行動維運: /status, /schedule_add)           │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                        晶創雲 Linux VM (Ubuntu)                        │
+│                                                                        │
+│  【應用模組 A：Web AI 服務】                                            │
+│   ├── Next.js 會議轉錄系統 (:3000) ──(Virtual Key)──▶                   │
+│   └── LiteLLM Gateway (:4000) ──(Provider Key)──▶ 國網 RAP API         │
+│          └── PostgreSQL (:5432 持久化)                                 │
+│                                                                        │
+│  【應用模組 B：AIOps 行動維運】                                         │
+│   ├── Telegram Bot Bridge (Python systemd 服務)                        │
+│   ├── SQLite schedules.db (主機級定時排程器)                            │
+│   └── Antigravity CLI (agy 本地子程序 / 系統資源控制)                   │
+└────────────────────────────────────────────────────────────────────────┘
 ```
+
+---
 
 ## 貫穿全課程的 AI 協作原則
 
@@ -102,13 +102,14 @@
 
 > 請先檢查目前狀態並提出計畫，不要立即修改。列出預計使用的指令、影響範圍、風險與驗證方式；等我確認後再逐步執行。遇到 sudo、刪除資料、修改防火牆、公開服務或顯示敏感資訊時，必須停下來再次詢問。
 
+---
+
 ## 安全底線
 
 - API Key 不貼入對話、不寫入程式碼、不提交 Git。
 - TAIWAN AI RAP API入口金鑰依計畫個別管理；不要與 Portal 的使用者金鑰或 LiteLLM Virtual Key 混用。
 - 瀏覽器只呼叫會議系統的同源後端，不直接取得 LiteLLM 或上游供應商金鑰。
 - 開發服務透過 Antigravity Ports 預覽，不開放晶創雲的 3000、4000 等連接埠。
-- Cloudflare Tunnel 只負責連線與發布，不提供使用者身分驗證；本課程由 Cloudflare Access 保護使用者入口，LiteLLM Virtual Key、模型白名單與限流則保護模型服務。
+- Cloudflare Tunnel 搭配 Cloudflare Access 保護使用者入口，LiteLLM Virtual Key、模型白名單與限流保護模型服務。
+- Telegram Bridge 強制限定單一數字 `ALLOWED_USER_ID`，並預設以 `safe` 模式運行。
 - 課程結束後停止或刪除不再使用的計費資源，並撤銷臨時金鑰。
-
-TAIWAN AI RAP 的申請畫面、模型與參數可能更新，開課時請以 [TAIWAN AI RAP API Guide](https://rap.genai.nchc.org.tw/doc?section=api-guide) 與 Lightweight Portal 當下資訊為準。
