@@ -62,10 +62,10 @@ Antigravity Ports 解決的是「學員如何查看遠端開發服務」；Cloud
 ### 模式 A：生產環境映像打包與 Docker Compose 部署
 
 ```markdown
-請檢查目前的 Next.js 會議轉錄系統與 LiteLLM Gateway，協助我建立正式環境的 Docker Compose 部署配置：
+請檢查 ~/aicloud-course 目錄下的 Next.js 會議轉錄系統（meeting-app）與 LiteLLM Gateway（gateway），協助我建立正式環境的 Docker Compose 部署配置：
 
-1. Next.js 必須使用 Production Build（非 npm run dev），並確認所有靜態資源打包成功。
-2. 配置 docker-compose.prod.yml：
+1. Next.js 必須使用 Production Build（Dockerfile），並確認所有靜態資源打包成功。
+2. 在 ~/aicloud-course 目錄下建立 docker-compose.prod.yml：
    - Next.js 服務綁定主機 127.0.0.1:3000:3000。
    - LiteLLM 僅綁定 127.0.0.1:4000:4000（或僅保留於容器內部網路）。
    - PostgreSQL 嚴禁發布主機 Port（僅容器內部互通）。
@@ -91,7 +91,7 @@ Antigravity Ports 解決的是「學員如何查看遠端開發服務」；Cloud
 ```markdown
 請對目前的正式部署環境進行全鏈路健康檢查與狀態診斷：
 
-1. 檢查 Docker 容器運行狀態（docker compose ps）與記憶體/CPU 資源佔用。
+1. 檢查 Docker 容器運行狀態（docker compose -f docker-compose.prod.yml ps）與記憶體/CPU 資源佔用。
 2. 測試本機 Next.js 首頁與 API 健康檢查端點（curl -I http://127.0.0.1:3000）。
 3. 檢查 cloudflared 系統服務運行狀態與錯誤日誌（journalctl -u cloudflared -n 50 --no-pager）。
 4. 驗證 Next.js 容器能否正常解析並連線至 LiteLLM 容器（http://litellm:4000/health）。
@@ -140,7 +140,7 @@ cloudflared --version
 > 適合 5 分鐘內的快速 Demo、手機端跨裝置預覽或臨時分享給同事。
 
 ```bash
-# 針對前端 Next.js / React 服務 (Port 3000 或 5173)
+# 針對前端 Next.js / React 服務 (Port 3000)
 cloudflared tunnel --url http://localhost:3000
 
 # 針對後端 FastAPI / Express 服務 (Port 8000)
@@ -164,11 +164,11 @@ cloudflared tunnel --url http://localhost:3000
 
 ### Step 3：正式生產環境打包與 Docker Compose 啟動
 
-正式環境中，應用程式應以最佳化的 Production 映像或 Standalone 模式運行，並將後端與資料庫隔離：
+在 `~/aicloud-course` 目錄下整合前述章節之 `gateway` 與 `meeting-app`，以 Production 模式運行：
 
 ```bash
-# 1. 進入專案目錄
-cd ~/aicloud-meeting-system
+# 1. 進入課程統一工作目錄
+cd ~/aicloud-course
 
 # 2. 建立正式環境 Docker Compose 設定檔 (docker-compose.prod.yml)
 cat <<'EOF' > docker-compose.prod.yml
@@ -181,7 +181,7 @@ services:
     restart: always
     environment:
       POSTGRES_DB: litellm
-      POSTGRES_USER: litellm_admin
+      POSTGRES_USER: litellm_user
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -190,16 +190,16 @@ services:
     # 注意：不發布 host ports，嚴禁直接暴露公網
 
   litellm:
-    image: ghcr.io/berriai/litellm:main-latest
+    image: ghcr.io/berriai/litellm:main-v1.40.0
     container_name: meeting-litellm
     restart: always
     ports:
       - "127.0.0.1:4000:4000" # 僅綁定本機 localhost
     environment:
-      DATABASE_URL: "postgresql://litellm_admin:${DB_PASSWORD}@postgres:5432/litellm"
+      DATABASE_URL: "postgresql://litellm_user:${DB_PASSWORD}@postgres:5432/litellm"
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
     volumes:
-      - ./litellm_config.yaml:/app/config.yaml
+      - ./gateway/config.yaml:/app/config.yaml
     command: ["--config", "/app/config.yaml", "--port", "4000"]
     depends_on:
       - postgres
@@ -208,7 +208,7 @@ services:
 
   nextjs-app:
     build:
-      context: ./frontend
+      context: ./meeting-app
       dockerfile: Dockerfile
     container_name: meeting-frontend
     restart: always
@@ -440,7 +440,7 @@ sudo systemctl disable cloudflared
 sudo cloudflared service uninstall
 
 # 3. 停止並刪除所有專案容器與網路
-cd ~/aicloud-meeting-system
+cd ~/aicloud-course
 docker compose -f docker-compose.prod.yml down -v
 
 # 4. 前往 Cloudflare Zero Trust 控制台：
