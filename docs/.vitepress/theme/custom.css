@@ -1,0 +1,37 @@
+:root {
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: -webkit-linear-gradient(120deg, #2563eb 20%, #4f46e5);
+}
+
+/* 改善首頁 Hero 大標題字體大小與行高，避免孤字掉行 */
+.VPHero .name {
+  font-size: 44px !important;
+  line-height: 1.25 !important;
+  letter-spacing: -0.02em;
+}
+
+.VPHero .text {
+  font-size: 40px !important;
+  line-height: 1.3 !important;
+  letter-spacing: -0.01em;
+}
+
+.VPHero .tagline {
+  font-size: 16px !important;
+  line-height: 1.7 !important;
+  max-width: 640px !important;
+  color: var(--vp-c-text-2) !important;
+  margin-top: 12px !important;
+}
+
+@media (max-width: 640px) {
+  .VPHero .name {
+    font-size: 30px !important;
+  }
+  .VPHero .text {
+    font-size: 26px !important;
+  }
+  .VPHero .tagline {
+    font-size: 15px !important;
+  }
+}
