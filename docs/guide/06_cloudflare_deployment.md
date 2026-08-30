@@ -463,5 +463,8 @@ docker compose -f docker-compose.prod.yml down -v
 - [ ] **常駐服務**：`cloudflared` 已註冊為 `systemd` 服務，且重啟 VM 後能自動恢復連線。
 - [ ] **機密防護**：Tunnel Token 由本人於終端機直接操作，未出現在對話紀錄、Git 或截圖中。
 - [ ] **身分驗證**：已設定 Cloudflare Access 應用程式，未經授權之訪客會被攔截並要求登入。
-- [ ] **功能驗證**：透過 `https://meeting.yourdomain.com` 成功完成錄音檔上傳、語音轉錄（STT）與會議摘要串流（SSE）。
 - [ ] **清理演練**：已熟悉 Virtual Key 撤銷、Tunnel 註銷與容器關閉之清理流程。
+
+> [!TIP]
+> 下一步：前往 [第 7 章：Antigravity CLI (AGY) × Telegram 行動維運與自動排程](/guide/07_telegram_vm_bridge)，探索如何透過 Telegram 隨身監控這台伺服器並設定自動化巡檢！
+
