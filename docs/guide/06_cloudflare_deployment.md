@@ -1,223 +1,467 @@
 # 第 6 章：Cloudflare Tunnel 與正式部署
 
-Antigravity Ports 解決的是「學員如何查看遠端開發服務」；Cloudflare Tunnel 解決的是「外部使用者如何透過固定 HTTPS 網域持續使用正式服務」。
+Antigravity Ports 解決的是「學員如何查看遠端開發服務」；Cloudflare Tunnel 搭配 Cloudflare Zero Trust 解決的是「外部使用者如何透過固定 HTTPS 網域安全、持續地存取正式發布的 AI 應用」。
 
-## 1. 開發預覽與正式發布
+---
 
-| 項目 | Antigravity Ports | Cloudflare Tunnel |
-| :--- | :--- | :--- |
-| 目的 | 個人開發、除錯與課堂驗證 | 正式或受控的外部服務 |
-| 使用者 | 目前的開發者 | 經授權的外部使用者／應用 |
-| 生命週期 | 依賴 Remote SSH／IDE 工作階段 | 由系統服務持續運行 |
-| 網址 | 本機預覽位址 | 固定 HTTPS 網域 |
-| 驗證 | 開發工具工作階段 | Cloudflare Access＋應用程式授權 |
+## 1. 開發預覽與正式發布架構
 
-不要把開發伺服器或 Antigravity Port 預覽當成正式部署。
+在進入實作前，必須明確區分開發階段、臨時測試與正式生產階段的環境差異：
 
-## 2. 正式服務架構
+| 項目 | Antigravity Ports | Quick Tunnel (`--url`) | 具名 Tunnel + Access (正式) |
+| :--- | :--- | :--- | :--- |
+| **主要目的** | 個人開發、即時熱重載除錯 | 臨時快速展示、跨裝置短暫測試 | 正式對外提供穩定、受控的生產環境服務 |
+| **目標受眾** | 目前連線中的開發者本人 | 臨時觀看 Demo 的特定對象 | 經身分驗證授權的外部使用者／團隊成員 |
+| **生命週期** | 依賴 Remote SSH / IDE 工作階段 | 依賴終端機指令（中斷即失效） | 由 Linux `systemd` 服務常駐運行，重啟自動恢復 |
+| **連線網址** | 本機預覽位址（`localhost:<port>` 轉發） | 隨機產生的 `trycloudflare.com` 網址 | 固定自訂 HTTPS 網域（如 `meeting.yourdomain.com`） |
+| **安全驗證** | 開發工具工作階段權限 | ❌ 無（公網公開） | Cloudflare Access 身分驗證（Email OTP / SSO） |
+| **SSE 串流** | ✅ 完整支援 | ❌ 易中斷或無法即時串流 | ✅ 完整支援 HTTP/2 與 SSE 長連線 |
 
-```text
-[外部使用者]
-       │ HTTPS
-       ▼
-[Cloudflare Access]
-       │ 身分驗證／存取政策
-       ▼
-[Cloudflare Tunnel]
-       │
-       ▼
-[Next.js 會議系統 :3000]
-       │ 會議系統 Virtual Key
-       ▼
-[LiteLLM :4000（內部）]
-       │ Provider Keys
-       ├── 國網模型 API
-       └── 其他授權模型 API
-```
+> [!WARNING]
+> **切勿將開發伺服器當作正式部署**：開發模式（如 `npm run dev`）包含大量除錯程式碼、熱重載開銷，且未經過打包最佳化，亦缺乏安全防護。
 
-預設只公開受 Cloudflare Access 保護的會議轉錄系統。LiteLLM、PostgreSQL、管理 UI 與上游 Key 都留在內部。
+---
 
-## 3. Production Build
+## 2. 正式服務零信任（Zero Trust）拓撲
 
-正式環境不得使用 `npm run dev`。請 Antigravity 先規劃：
-
-> 請檢查 Next.js 會議轉錄系統與 LiteLLM Gateway，提出正式部署計畫。Next.js 必須使用 production build，LiteLLM 與 PostgreSQL 不得直接公開，Secret 不可寫入映像或 Git。請比較 systemd 與 Docker Compose，選擇本專案較簡單且可重現的方式，列出健康檢查、重啟、日誌、備份與回復步驟，暫時不要執行。
-
-本課程建議用 Docker Compose 管理應用服務，理由是 LiteLLM 與 PostgreSQL 本來就適合容器化，也可避免 NVM 安裝的 Node.js 路徑在 systemd 中不一致。
-
-### 容器網路的重要差異
-
-在 VM 主機上開發時，Next.js 可以呼叫 `http://127.0.0.1:4000`。但 Next.js 與 LiteLLM 都進入 Compose 後，容器內的 `localhost` 只代表該容器自己，應改用 Compose service name，例如 `http://litellm:4000`。
-
-本課程的 Compose 部署應明確限制主機 Port 綁定；驗收設定等價於：
+正式發布時，主機上的所有後端與資料庫服務均不得直接對公網開放 Inbound Port。整個流量路徑如下：
 
 ```text
-127.0.0.1:3000 → Next.js
-127.0.0.1:4000 → LiteLLM（若維運需要）
-PostgreSQL         不發布主機 Port
+[外部使用者 / 瀏覽器]
+       │ HTTPS（固定自訂網域：meeting.yourdomain.com）
+       ▼
+[Cloudflare Access 邊緣層] ──▶ 檢查身分驗證（Email OTP / 組織白名單）
+       │ 驗證通過
+       ▼
+[Cloudflare Tunnel（加密 Outbound 通道）]
+       │ 安全穿透（主機無須開放 Inbound 80/443 Port）
+       ▼
+[Linux VM 主機：cloudflared connector (systemd)]
+       │ 轉發至本地容器
+       ▼
+[Next.js 會議轉錄前端 :3000 (Production Build)]
+       │ 使用專屬受限 Virtual Key (僅限 meeting-stt, meeting-llm)
+       ▼
+[LiteLLM Gateway :4000 (內部 Docker 網路)] ──▶ [PostgreSQL :5432 (內部儲存)]
+       │ 持有真正 Provider Keys (集中管控)
+       ├── 國網 TAIWAN AI RAP API
+       └── 其他授權模型 API (OpenAI / Claude / etc.)
 ```
 
-例如 Next.js 的 Compose `ports` 應綁定 `127.0.0.1:3000:3000`，讓主機上的 `cloudflared` 可以連線，但外部網路不能直接存取 3000。若 `cloudflared` 也放入同一個 Compose 網路，則應改以 Next.js service name 連線，且可不發布主機 Port；兩種拓撲擇一並實測，不要混用。
+### 核心安全原則
+1. **零開放 Inbound 端口**：VM 主機完全不需要在晶創雲防火牆開放 80、443 或 3000 埠號，杜絕公網 Port 掃描。
+2. **自動 HTTPS / TLS**：由 Cloudflare 邊緣節點自動配發並續期 SSL 憑證，並預設提供全球 CDN 與 DDoS 防護。
+3. **最小暴露面**：外部僅能存取 Next.js 會議系統；LiteLLM Gateway、PostgreSQL 資料庫與所有上游 API Key 全數封裝在內部網路中。
 
-## 4. 部署前驗收
+---
 
-先在 VM 內完成：
+## 3. 🤖 自然語言 Prompt 配方（可直接複製給 AI Agent）
 
-- Next.js Production Build 成功
-- 容器健康檢查成功
-- VM 重新啟動後服務自動恢復
-- Next.js 能從容器網路呼叫 LiteLLM
-- PostgreSQL 資料持久化
-- 會議系統使用只允許 `meeting-stt` 與 `meeting-llm` 的 Virtual Key，不是 Master Key
-- 服務只監聽必要的 localhost Port
-- 日誌不含 Secret 或完整敏感 Prompt
+在 Antigravity 或終端機 AI Agent 環境中，你可以直接複製以下 Prompt 讓 AI 協助執行部署規劃與驗證。
 
-可以先透過 Antigravity Ports 預覽 3000，確認 Production 版本無誤，再設定 Cloudflare。
+### 模式 A：生產環境映像打包與 Docker Compose 部署
 
-## 5. 為什麼本課程不使用 Quick Tunnel
+```markdown
+請檢查目前的 Next.js 會議轉錄系統與 LiteLLM Gateway，協助我建立正式環境的 Docker Compose 部署配置：
 
-Quick Tunnel 會產生隨機的 `trycloudflare.com` 網址，適合短暫測試一般 HTTP 服務，但不是本課程的開發預覽或正式發布方案。
+1. Next.js 必須使用 Production Build（非 npm run dev），並確認所有靜態資源打包成功。
+2. 配置 docker-compose.prod.yml：
+   - Next.js 服務綁定主機 127.0.0.1:3000:3000。
+   - LiteLLM 僅綁定 127.0.0.1:4000:4000（或僅保留於容器內部網路）。
+   - PostgreSQL 嚴禁發布主機 Port（僅容器內部互通）。
+3. 設定 restart: always 以確保開機與當機時自動重啟。
+4. 啟動所有容器並執行健康檢查，驗證本機 127.0.0.1:3000 與 127.0.0.1:4000 可正常回應。
+5. 切勿輸出任何 API Key、資料庫密碼或機密設定。
+```
 
-依 [Cloudflare Quick Tunnel 官方文件](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/do-more-with-tunnels/trycloudflare/)：
+### 模式 B：正式生產部署（具名 Tunnel + 自訂網域 + Systemd 常駐）
 
-- 只供測試與開發使用。
-- 同時進行中的請求有數量限制，超過時會回傳 429。
-- 不支援 Server-Sent Events（SSE）。
+```markdown
+請協助我在這台 Linux 主機上安裝 Cloudflare Connector（cloudflared）並設定正式常駐服務：
 
-本課程的會議紀錄需要 SSE 串流，且錄音檔上傳涉及較長請求，因此開發時使用 Antigravity Ports，正式發布使用具名 Cloudflare Tunnel，不執行 `cloudflared tunnel --url ...`。
+1. 檢查主機 CPU 架構（x86_64 / arm64）與作業系統版本，下載官方對應的 cloudflared .deb 套件並安裝。
+2. 驗證 cloudflared --version 安裝成功。
+3. 提示：當需要執行含有 Cloudflare Tunnel Token 的安裝指令時，請暫停並提示我手動在終端機貼上執行，切勿要求我將 Token 提供給對話日誌。
+4. 在我手動安裝 connector 後，協助檢查 systemd 服務狀態（sudo systemctl status cloudflared）與近期日誌。
+5. 驗證本機 127.0.0.1:3000 的連線狀態，確保 Connector 能正常轉發流量。
+```
 
-## 6. 安裝與驗證 cloudflared
+### 模式 C：部署健康檢查與連線除錯
 
-不要讓 AI 直接下載永遠指向 `latest` 的套件。先確認 VM 架構、現有版本、官方安裝來源與課程指定版本：
+```markdown
+請對目前的正式部署環境進行全鏈路健康檢查與狀態診斷：
 
-> 請確認 CPU 架構、作業系統與 cloudflared 現有版本，再依 Cloudflare 官方文件提出安裝或升級計畫。說明套件來源、版本、需要 sudo 的原因、將建立的 systemd 服務、驗證與回復方式，先不要下載或安裝。不得使用來源不明的套件，也不得在輸出中顯示 Tunnel Token。
+1. 檢查 Docker 容器運行狀態（docker compose ps）與記憶體/CPU 資源佔用。
+2. 測試本機 Next.js 首頁與 API 健康檢查端點（curl -I http://127.0.0.1:3000）。
+3. 檢查 cloudflared 系統服務運行狀態與錯誤日誌（journalctl -u cloudflared -n 50 --no-pager）。
+4. 驗證 Next.js 容器能否正常解析並連線至 LiteLLM 容器（http://litellm:4000/health）。
+5. 回報檢查摘要，若有異常請指出具體修復建議，切勿輸出任何機密 Token。
+```
 
-安裝二進位檔後先驗證：
+### 模式 D：快速展示測試（免網域、免帳號 Quick Tunnel）
+
+```markdown
+請幫我在這台 Linux 主機上安裝 cloudflared，並為目前本機執行的服務建立臨時的免費 HTTPS 測試通道（Quick Tunnel）：
+
+1. 檢查系統是否已安裝 `cloudflared`，若無請下載官方 .deb 套件安裝。
+2. 啟動臨時通道：`cloudflared tunnel --url http://localhost:3000`。
+3. 擷取並回傳終端機中產生的 `https://xxxx.trycloudflare.com` 公開測試網址。
+4. 提醒：這僅供臨時展示測試使用，測試完畢後按 Ctrl+C 即可中斷。
+```
+
+---
+
+## 4. 💻 終端機手動執行指令 (Manual Commands & Step-by-Step)
+
+以下為在 Linux VM（Ubuntu / Debian）終端機中手動執行的完整操作流程。
+
+### Step 1：安裝 `cloudflared` (適用 Ubuntu / Debian)
+
+無論是快速測試還是正式部署，第一步都是在 Linux VM 上安裝官方 `cloudflared` 工具：
 
 ```bash
+# 1. 檢查主機硬體架構 (x86_64 或 arm64)
+ARCH=$(dpkg --print-architecture)
+echo "目前系統架構: $ARCH"
+
+# 2. 下載官方最新 deb 安裝檔並安裝
+curl -L --output /tmp/cloudflared.deb "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${ARCH}.deb" && \
+sudo dpkg -i /tmp/cloudflared.deb && \
+rm -f /tmp/cloudflared.deb
+
+# 3. 驗證安裝結果
 cloudflared --version
 ```
 
-## 7. 建立具名 Cloudflare Tunnel
+---
 
-在 Cloudflare Zero Trust 建立具名 Tunnel，依後台顯示的當期指令安裝 `cloudflared` Connector。AI 操作到後台產生 Connector 指令時必須暫停，由學員親自在遠端終端機完成含 Token 的步驟。
+### Step 2（快速體驗）：免網域 Quick Tunnel 測試
 
-Tunnel Token 不得放入 Prompt、Git、README、截圖、共用 Shell History 或 AI 執行日誌。若曾出現在不可信位置，先從 Cloudflare 後台輪替，再繼續部署。完成 Connector 安裝後，AI 只檢查版本、systemd 狀態與不含 Secret 的連線結果。
-
-Connector 安裝成 systemd 服務後再驗證：
+> 適合 5 分鐘內的快速 Demo、手機端跨裝置預覽或臨時分享給同事。
 
 ```bash
+# 針對前端 Next.js / React 服務 (Port 3000 或 5173)
+cloudflared tunnel --url http://localhost:3000
+
+# 針對後端 FastAPI / Express 服務 (Port 8000)
+# cloudflared tunnel --url http://localhost:8000
+```
+
+*終端機輸出範例：*
+```text
++--------------------------------------------------------------------------------------------+
+|  Your quick Tunnel has been created! Visit it at (it may take some time to be reachable):  |
+|  https://random-words-1234.trycloudflare.com                                               |
++--------------------------------------------------------------------------------------------+
+```
+
+複製該網址即可在任何聯網裝置上透過 HTTPS 開啟服務。按下 `Ctrl + C` 即可停止並關閉通道。
+
+> [!NOTE]
+> Quick Tunnel 適合快速驗證介面版面；若要進行完整的 AI 會議轉錄（錄音檔上傳與 SSE 即時串流）與長期穩定運行，請繼續依照下方步驟進行**正式具名 Tunnel 部署**。
+
+---
+
+### Step 3：正式生產環境打包與 Docker Compose 啟動
+
+正式環境中，應用程式應以最佳化的 Production 映像或 Standalone 模式運行，並將後端與資料庫隔離：
+
+```bash
+# 1. 進入專案目錄
+cd ~/aicloud-meeting-system
+
+# 2. 建立正式環境 Docker Compose 設定檔 (docker-compose.prod.yml)
+cat <<'EOF' > docker-compose.prod.yml
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: meeting-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: litellm
+      POSTGRES_USER: litellm_admin
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - internal_net
+    # 注意：不發布 host ports，嚴禁直接暴露公網
+
+  litellm:
+    image: ghcr.io/berriai/litellm:main-latest
+    container_name: meeting-litellm
+    restart: always
+    ports:
+      - "127.0.0.1:4000:4000" # 僅綁定本機 localhost
+    environment:
+      DATABASE_URL: "postgresql://litellm_admin:${DB_PASSWORD}@postgres:5432/litellm"
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+    volumes:
+      - ./litellm_config.yaml:/app/config.yaml
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    depends_on:
+      - postgres
+    networks:
+      - internal_net
+
+  nextjs-app:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: meeting-frontend
+    restart: always
+    ports:
+      - "127.0.0.1:3000:3000" # 僅綁定本機 localhost，供 cloudflared 轉發
+    environment:
+      NODE_ENV: production
+      LITELLM_BASE_URL: "http://litellm:4000"
+      LITELLM_VIRTUAL_KEY: ${MEETING_VIRTUAL_KEY}
+    depends_on:
+      - litellm
+    networks:
+      - internal_net
+
+networks:
+  internal_net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+EOF
+
+# 3. 啟動生產環境服務
+docker compose -f docker-compose.prod.yml up -d --build
+
+# 4. 驗收本機服務監聽狀況（確認僅 127.0.0.1 監聽，無 0.0.0.0）
+ss -tulpn | grep -E ':(3000|4000)'
+curl -I http://127.0.0.1:3000
+```
+
+---
+
+### Step 4：Cloudflare Zero Trust 建立具名 Tunnel (Named Tunnel)
+
+> [!IMPORTANT]
+> **Token 安全守則**：Tunnel Token 代表該通道的控制權限。**請親自在終端機貼上執行，切勿寫入 Git、README 或 AI 提示詞中**。
+
+1. 開啟瀏覽器，登入 [Cloudflare Zero Trust 控制台](https://one.dash.cloudflare.com/)。
+2. 進入 **Networks** ➔ **Tunnels** ➔ 點擊 **Add a tunnel**。
+3. 選擇 **Cloudflared** 類型，為 Tunnel 命名（例如 `aicloud-meeting-prod`）。
+4. 在 **Install and run a connector** 頁籤中選擇 **Debian** / **64-bit**，複製系統產生的安裝指令。
+5. 回到 Linux VM 終端機執行該指令（包含 service install 與 token 註冊）：
+
+```bash
+# 由 Cloudflare 後台複製產生之專屬指令（示例如下）：
+sudo cloudflared service install <YOUR_TUNNEL_TOKEN>
+```
+
+該指令會自動完成：
+- 在 `/etc/systemd/system/cloudflared.service` 建立服務設定。
+- 將 Tunnel 憑證安全保存在系統目錄。
+- 啟動 `cloudflared` 並設為開機自動啟動。
+
+---
+
+### Step 5：常用 systemd 管理與連線監控指令
+
+在日常維運時，請使用以下指令管理 Connector：
+
+```bash
+# 檢查 cloudflared 服務狀態（確認顯示 active (running)）
 sudo systemctl status cloudflared --no-pager
+
+# 啟動 / 停止 / 重啟服務
+sudo systemctl start cloudflared
+sudo systemctl stop cloudflared
+sudo systemctl restart cloudflared
+
+# 設定 / 取消開機自啟動
+sudo systemctl enable cloudflared
+sudo systemctl disable cloudflared
+
+# 查看即時連線日誌 (追蹤連線邊緣節點狀態)
+sudo journalctl -u cloudflared -f
+
+# 查看最近 10 分鐘的日誌
 sudo journalctl -u cloudflared --since "10 minutes ago" --no-pager
 ```
 
-`systemctl status` 與日誌用來判斷 Connector 是否啟動及連線，不把日誌中的識別資訊、Hostname 或其他敏感資料整段貼回 Prompt。只有在理解影響後才執行 `restart`。
+---
 
-先確認 Tunnel 顯示健康，再進入 Access 與 Published Application Route 設定；不要急著建立一個無驗證的公開網址。
+## 5. 深入解析：為什麼正式發布不採用 Quick Tunnel？
 
-Cloudflare Tunnel 由 VM 主動連出，因此通常不需要開放晶創雲 80、443 或 3000 Ingress；但 Egress、DNS 與專案網路政策仍需允許 Connector 連線。
+了解工具的邊界，是系統架構設計的重要一環：
 
-## 8. 先設定 Access，再發布 Hostname
+| 評估維度 | Quick Tunnel (`trycloudflare.com`) | 具名 Tunnel (Named Tunnel) |
+| :--- | :--- | :--- |
+| **網址性質** | 每次啟動隨機產生，無法固定 | 固定自訂網域（`meeting.yourdomain.com`） |
+| **SSE 串流支援** | ❌ **不支援 Server-Sent Events**（串流會中斷或失效） | ✅ **完整支援 HTTP/2 與 SSE 長連線串流** |
+| **連線並發限制** | 超過並發連線即回傳 `429 Too Many Requests` | 企業級高頻寬與高並發支援 |
+| **身分驗證防護** | ❌ 無法掛載 Cloudflare Access（公網裸露） | ✅ **可直接綁定 Cloudflare Access 身分驗證** |
+| **連線常駐維運** | 需手動保持終端機 Session | 支援 `systemd` 背景常駐與當機自動重啟 |
 
-建立 Access Application 與最小允許政策，例如：
+> [!CAUTION]
+> 本課程之會議轉錄系統高度依賴 **SSE (Server-Sent Events)** 即時串流語音辨識與 LLM 摘要，且 AI API 呼叫會耗費實質點數與費用。使用 Quick Tunnel 不僅會造成即時文字串流功能失效，更可能因公網裸露導致 API 額度被惡意盜刷。
 
-- 只允許指定組織網域
-- 或只允許課程學員 Email
-- 設定合理的 Session Duration
-- 管理者與一般使用者分離
-- 拒絕規則優先於寬鬆允許規則
+---
 
-接著才建立會議系統的 Published Application Route：
+## 6. Cloudflare Zero Trust 存取防護與網域路由設定
 
-| 欄位 | 值 |
-| :--- | :--- |
-| Hostname | `meeting.<你的網域>` |
-| Service | `http://127.0.0.1:3000` |
-| 對外協定 | HTTPS |
+完成 Connector 安裝後，回到 Cloudflare Zero Trust 後台進行安全發布：
 
-將 Access 與 Hostname 視為同一個受控發布階段，儲存後立即用未登入瀏覽器測試應被阻擋，再登入測試首頁、錄音檔上傳、STT 與會議紀錄 SSE。Cloudflare 官方提醒，只有 Tunnel Route 而沒有 Access Application 時，網際網路使用者可能直接存取該 Hostname；請參考[具名 Tunnel 官方流程](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/get-started/create-remote-tunnel/)。
+### 步驟一：設定 Cloudflare Access 應用程式防護（最重要防線）
 
-本課程版本沒有應用程式帳號與 Session，因此 Cloudflare Access 是正式入口的必要身分保護；Next.js 仍只持有最小權限 Virtual Key，LiteLLM 仍需 Rate Limit、模型白名單與日誌政策。
+因為我們的 Next.js 前端並未內建使用者註冊與資料庫帳密系統，**必須透過 Cloudflare Access 在邊緣層阻擋未授權存取**。
 
-## 9. 不建議公開 LiteLLM API
+1. 在 Zero Trust 後台導航至 **Access** ➔ **Applications** ➔ 點擊 **Add an application**。
+2. 選擇 **Self-hosted**。
+3. 設定基本資訊：
+   - **Application name**：`AI Meeting Transcription System`
+   - **Session Duration**：選擇 `24 Hours`（依團隊安全政策調整）
+   - **Application domain**：
+     - Subdomain: `meeting`
+     - Domain: `yourdomain.com`（你的代管網域）
+4. 設定存取規則（**Add Policy**）：
+   - **Policy Name**：`Allow Team Members`
+   - **Action**：`Allow`
+   - **Configure rules (Include)**：
+     - 選擇 `Emails` ➔ 輸入允許授權的成員信箱（例如 `student@example.com`）
+     - 或選擇 `Emails ending in` ➔ 輸入組織網域（例如 `@yourcompany.com`）
+5. 點擊 **Save** 完成防護設定。使用者存取該網址時，會先看到 Cloudflare OTP 登入驗證頁面，驗證成功後才放行至應用程式。
 
-主課程架構中，外部使用者只需要會議轉錄系統，不需直接呼叫 LiteLLM。
+---
 
-若未來確實要提供 `api.<你的網域>`，應視為另一項進階服務，至少加入：
+### 步驟二：設定 Public Hostname 路由
 
-- 獨立 Cloudflare Access Service Token 或其他機器驗證
-- 每個應用程式獨立 Virtual Key
-- 模型白名單
-- RPM／TPM／預算
-- Request size 與 Timeout 限制
-- Key 輪替與撤銷
-- 管理 API／UI 與推論 API 分離
-- 事件監控與異常用量告警
+1. 在 Zero Trust 後台進入 **Networks** ➔ **Tunnels** ➔ 點擊剛才建立的 Tunnel ➔ 點選 **Configure**。
+2. 切換到 **Public Hostnames** 頁籤 ➔ 點擊 **Add a public hostname**。
+3. 填寫轉發設定：
+   - **Public Hostname**：
+     - Subdomain：`meeting`
+     - Domain：`yourdomain.com`
+     - Path：留空（代表全部路徑）
+   - **Service**：
+     - Type：`HTTP`
+     - URL：`127.0.0.1:3000`（轉發至本機 Next.js 服務）
+4. 展開 **Additional application settings** ➔ **HTTP Settings**（建議設定）：
+   - 開啟 **HTTP2 Support**（提升 SSE 串流與多請求效率）
+   - Connection Timeout：`30s`
+5. 點擊 **Save hostname**。DNS 紀錄與 SSL 憑證將在數秒內自動生效。
 
-不允許把 LiteLLM Master Key 提供給外部應用。
+---
 
-## 10. 請 Antigravity 協助部署與驗證
+## 7. 為什麼嚴格禁止公開 LiteLLM API 與 PostgreSQL？
 
-> 請依已確認的正式部署計畫執行。每次只變更一個服務，先備份可回復的設定並顯示不含 Secret 的差異。到 Cloudflare Connector Token 步驟時停止，由我親自在終端機完成。其餘完成後驗證 Compose 狀態、健康檢查、localhost 存取、cloudflared 服務、Access 未登入阻擋、登入後完成錄音檔上傳、STT 與會議紀錄串流，以及 VM 重啟後自動恢復。不得使用 Quick Tunnel，不得輸出 Tunnel Token、API Key、Cookie 或資料庫密碼。
+在標準架構中，外部使用者僅需使用會議轉錄 Web 介面，**絕不可把 LiteLLM API (`:4000`) 或 PostgreSQL (`:5432`) 直接設定為 Public Hostname**。
 
-## 11. 故障定位順序
+### 安全風險分析
+1. **API Key 盜用與額度耗盡**：若 LiteLLM API 缺乏 Access 防護直接公開，任何取得端點的人均可濫用您的國網或商業模型額度。
+2. **Master Key 洩漏風險**：LiteLLM 的管理介面（Dashboard）具備發放 Key 與修改費率權限，暴露於公網極易遭到暴力破解。
+3. **資料庫注入與竊取**：PostgreSQL 儲存了所有對話紀錄、模型日誌與虛擬金鑰，必須只允許 Docker 內部網路存取。
+
+> [!TIP]
+> **若未來確實需要對外提供 API 服務**：
+> 應另外建立專屬的 Public Hostname（如 `api.yourdomain.com`），並在 Cloudflare Access 中強制啟用 **Service Token 機器認證**，同時在 LiteLLM 內部為每個外部呼叫端分配獨立的 Virtual Key，設定嚴格的 RPM / TPM / 預算上限與模型白名單。
+
+---
+
+## 8. 部署驗收清單與分層故障排除 (Troubleshooting SOP)
+
+當部署完成或遭遇連線問題時，請遵循「**由外向內、由淺入深**」的分層排除原則：
 
 ```text
-瀏覽器
-  ↓
-Cloudflare Access
-  ↓
-Tunnel／cloudflared
-  ↓
-Next.js
-  ↓
-LiteLLM
-  ↓
-上游 Provider
+[1. 瀏覽器端]
+      │
+      ▼
+[2. Cloudflare Access 驗證層] ── 檢查是否出現 403 Forbidden 或 OTP 驗證失敗
+      │
+      ▼
+[3. Cloudflare Tunnel / Connector] ── 檢查 sudo systemctl status cloudflared 是否連線
+      │
+      ▼
+[4. Next.js 前端容器 (:3000)] ── 檢查 docker logs meeting-frontend 與本機 curl
+      │
+      ▼
+[5. LiteLLM Gateway (:4000)] ── 檢查 Virtual Key 是否有效、是否被 Rate Limit
+      │
+      ▼
+[6. 上游 Provider (國網 RAP)] ── 檢查上游 API Key 餘額與網路連線狀態
 ```
 
-每次只確認相鄰兩層：
+### 常見問題排查與解決對策
 
-1. VM 內能否直接開啟 Next.js？
-2. Next.js 能否分別呼叫 LiteLLM 的 `meeting-stt` 與 `meeting-llm`？
-3. LiteLLM 能否分別呼叫 STT 與 LLM 上游？
-4. Tunnel 是否連線？
-5. Access 是否允許正確身分？
-6. 公開網域是否能完成串流？
+#### Q1：瀏覽器出現 `502 Bad Gateway`
+- **可能原因**：Cloudflare Tunnel 連線正常，但本地 `127.0.0.1:3000` 服務未啟動或無法回應。
+- **排除步驟**：
+  ```bash
+  # 1. 檢查 Next.js 容器是否正常運行
+  docker compose -f docker-compose.prod.yml ps
+  
+  # 2. 測試本機能否連通 3000 埠
+  curl -I http://127.0.0.1:3000
+  
+  # 3. 檢查 Next.js 容器錯誤日誌
+  docker compose -f docker-compose.prod.yml logs --tail=50 nextjs-app
+  ```
 
-不要一遇到錯誤就刪除整個部署或開放所有 Port。
+#### Q2：會議紀錄摘要無法即時串流（SSE 卡住或一次性吐出）
+- **可能原因**：Proxy 緩衝區（Buffer）阻擋了串流封包，或使用了 Quick Tunnel。
+- **排除步驟**：
+  1. 確認未在 Quick Tunnel 下執行。
+  2. 檢查 Cloudflare Tunnel 的 Public Hostname 設定中是否啟用了 HTTP2。
+  3. 確認 Next.js API Route 中回應標頭包含：
+     ```http
+     Content-Type: text/event-stream
+     Cache-Control: no-cache, no-transform
+     Connection: keep-alive
+     ```
 
-## 12. 上線後與課後清理
+#### Q3：Tunnel Token 意外洩漏（出現在 Git 或日誌中）
+- **應急處理 SOP**：
+  1. 立即登入 Cloudflare Zero Trust 控制台。
+  2. 進入 **Networks** ➔ **Tunnels** ➔ 選擇該 Tunnel ➔ 點擊 **Delete** 刪除該通道。
+  3. 重新建立新 Tunnel 並取得全新 Token。
+  4. 在 Linux 主機重新執行 `sudo cloudflared service install <NEW_TOKEN>`。
 
-上線後至少檢查：
+---
 
-- Cloudflare 與應用程式存取紀錄
-- LiteLLM 錯誤率、延遲及使用量
-- 上游費用與配額
-- 磁碟空間、容器狀態與 LiteLLM PostgreSQL 治理資料備份
-- 金鑰到期與映像更新
+## 9. 課後資源清理與金鑰撤銷 SOP
 
-課程結束若不再提供服務：
+當課程結束或專案下線時，請依序執行清理以避免安全隱憂或非預期計費：
 
-1. 撤銷會議系統 Virtual Key。
-2. 停用 Cloudflare Public Hostname 與 Access Application。
-3. 停止並移除不再使用的容器。
-4. 備份後刪除不需要的磁碟與 VM。
-5. 檢查晶創雲是否仍有計費資源。
-6. 保存不含 Secret 的架構、設定範本與學習紀錄。
+```bash
+# 1. 撤銷會議系統專用 Virtual Key (登入 LiteLLM Dashboard 或透過 Admin API 刪除)
 
-## 13. 全課程完成條件
+# 2. 停止並移除 cloudflared 系統服務
+sudo systemctl stop cloudflared
+sudo systemctl disable cloudflared
+sudo cloudflared service uninstall
 
-- [ ] Antigravity Ports 可做私人開發預覽
-- [ ] Next.js 使用 Production Build
-- [ ] LiteLLM 與 PostgreSQL 未直接公開
-- [ ] 沒有使用不支援 SSE 的 Quick Tunnel
-- [ ] cloudflared 版本、systemd 狀態與近期日誌已驗證
-- [ ] Tunnel Token 由學員親自處理，未進入 Prompt、Git 或截圖
-- [ ] Cloudflare Tunnel 只指向必要服務
-- [ ] Cloudflare Access 已驗證未登入與已登入情境
-- [ ] VM 重啟後服務自動恢復
-- [ ] 會議系統的錄音檔上傳、STT、串流、限流及錯誤處理正常
-- [ ] 已完成金鑰撤銷與資源清理演練
+# 3. 停止並刪除所有專案容器與網路
+cd ~/aicloud-meeting-system
+docker compose -f docker-compose.prod.yml down -v
 
-至此，學員完成的是一套可延伸的 AI 應用基礎平台。未來可在同一個 LiteLLM Gateway 上增加 RAG、批次任務或獨立的進階 Agent 課程，而不必重新處理所有供應商金鑰與路由。
+# 4. 前往 Cloudflare Zero Trust 控制台：
+#    - 刪除 Public Hostname 路由 (meeting.yourdomain.com)
+#    - 刪除 Access Application
+#    - 刪除 Tunnel 實例
+
+# 5. 檢查晶創雲主機資源與磁碟，若不再使用請停止或釋放 VM
+```
+
+---
+
+## 10. 全章完成檢核清單 (Checklist)
+
+請確認以下每一項均已完成驗收：
+
+- [ ] **生產打包**：Next.js 已完成 Production Build，非 `npm run dev` 開發伺服器。
+- [ ] **內部隔離**：LiteLLM Gateway 與 PostgreSQL 未發布公網 Port，僅限本機或內部容器網路通訊。
+- [ ] **套件安裝**：Linux VM 已安裝最新官方 `cloudflared`，並驗證 `cloudflared --version`。
+- [ ] **常駐服務**：`cloudflared` 已註冊為 `systemd` 服務，且重啟 VM 後能自動恢復連線。
+- [ ] **機密防護**：Tunnel Token 由本人於終端機直接操作，未出現在對話紀錄、Git 或截圖中。
+- [ ] **身分驗證**：已設定 Cloudflare Access 應用程式，未經授權之訪客會被攔截並要求登入。
+- [ ] **功能驗證**：透過 `https://meeting.yourdomain.com` 成功完成錄音檔上傳、語音轉錄（STT）與會議摘要串流（SSE）。
+- [ ] **清理演練**：已熟悉 Virtual Key 撤銷、Tunnel 註銷與容器關閉之清理流程。
