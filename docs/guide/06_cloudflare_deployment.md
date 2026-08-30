@@ -466,5 +466,5 @@ docker compose -f docker-compose.prod.yml down -v
 - [ ] **清理演練**：已熟悉 Virtual Key 撤銷、Tunnel 註銷與容器關閉之清理流程。
 
 > [!TIP]
-> 下一步：前往 [第 7 章：Antigravity CLI (AGY) × Telegram 行動維運與自動排程](/guide/07_telegram_vm_bridge)，探索如何透過 Telegram 隨身監控這台伺服器並設定自動化巡檢！
+> 下一步：前往 [第 7 章：HostSpark 24/7 主機 AI 代理與 Telegram 行動自主維運](/guide/07_telegram_vm_bridge)，探索如何透過 HostSpark 代理隨身監控這台伺服器並設定自動化巡檢！
 

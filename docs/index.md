@@ -45,8 +45,8 @@ features:
     link: /guide/06_cloudflare_deployment
     linkText: 發布正式服務
   - icon: 🤖
-    title: 第 7 章｜Telegram × AGY 行動維運
-    details: 部署 Telegram 輕量橋接器，結合主機級定時排程與 AGY CLI，實現手機端 24 小時伺服器巡檢與遙控維運。
+    title: 第 7 章｜HostSpark 主機 AI 代理
+    details: 部署 HostSpark 主機 AI 代理核心，結合持久定時排程與 Telegram，實現 24 小時伺服器自主巡檢與行動維運。
     link: /guide/07_telegram_vm_bridge
     linkText: 探索行動維運
 ---

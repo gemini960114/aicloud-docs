@@ -2,7 +2,7 @@ import { defineConfig } from 'vitepress'
 
 export default defineConfig({
   title: "晶創雲雲平台 AI 應用開發課程",
-  description: "使用 Antigravity、TAIWAN AI RAP、LiteLLM 與 Cloudflare，學習 AI 應用建置、治理、發布與 Telegram 行動維運",
+  description: "使用 Antigravity、TAIWAN AI RAP、LiteLLM、Cloudflare 與 HostSpark，學習 AI 應用建置、治理、發布與行動維運",
   head: [
     ['link', { rel: 'icon', href: 'https://docs.central.iic.nchc.org.tw/user-panel/img/favicon.ico' }]
   ],
@@ -25,7 +25,7 @@ export default defineConfig({
           { text: '🛡️ 第 4 章：Virtual Key 與流量治理', link: '/guide/04_litellm_api_governance' },
           { text: '🎙️ 第 5 章：AI 會議轉錄與紀錄', link: '/guide/05_ai_meeting_transcription' },
           { text: '🔒 第 6 章：Cloudflare 正式部署', link: '/guide/06_cloudflare_deployment' },
-          { text: '🤖 第 7 章：Telegram × AGY 行動維運', link: '/guide/07_telegram_vm_bridge' },
+          { text: '🤖 第 7 章：HostSpark 主機 AI 代理', link: '/guide/07_telegram_vm_bridge' },
           { text: '🧩 附錄：AI 協作提示詞模板庫', link: '/guide/prompt_recipes' }
         ]
       }

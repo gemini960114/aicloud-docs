@@ -6,7 +6,7 @@
 
 課程包含兩大實戰主軸：
 1. **對外 Web AI 應用**：先驗證 **TAIWAN AI RAP** 模型 API，部署 **LiteLLM Gateway** 實現多模型統一管理與 Virtual Key 治理，接著以 Prompt 協作開發「錄音檔轉錄與 LLM 會議紀錄系統」，並透過 **Cloudflare Tunnel + Zero Trust Access** 安全發布至公網。
-2. **對內 AIOps 行動維運（進階）**：在 Linux VM 部署 **Telegram → Antigravity CLI (`agy`) 安全橋接器**，利用主機級定時排程（Host-level Scheduler）實現 24 小時無人值守的伺服器巡檢與手機端遙控。
+2. **對內 AIOps 行動維運（進階）**：在 Linux VM 部署 **HostSpark（24/7 Autonomous AI Agent for Linux Hosts）**，利用持久定時任務（Persistent Scheduled Tasks）實現 24 小時無人值守的伺服器巡檢與 Telegram 手機端自主維運。
 
 > **名稱說明：**「TAIWAN AI RAP」是服務名稱；「TAIWAN AI RAP API」是該服務提供的程式介面。教材首次出現時使用完整名稱，後文簡稱 RAP。
 
@@ -17,7 +17,7 @@
 - 想認識晶創雲雲平台 VM 與網路環境的開發者或研究人員
 - 想用 AI 輔助完成 Linux 操作與應用開發的初學者
 - 想統一管理多個模型 API 的平台或應用開發人員
-- 想透過手機通訊軟體（Telegram）遠端監控伺服器與排程任務的維運人員
+- 想透過手機（Telegram）遠端監控伺服器並建立 24/7 AI 自動化排程的維運工程師
 
 ---
 
@@ -40,7 +40,7 @@
 5. 向不同團隊與應用程式發放獨立 Virtual Key，分別管理模型權限、流量、期限與預算。
 6. 以分階段 Prompt 引導 AI 建立錄音檔轉錄與會議紀錄系統，並安全交付至 GitHub。
 7. 使用 Cloudflare Access 與 Tunnel，將正式 Web 服務以零信任身分驗證安全發布到網際網路。
-8. 部署 Telegram × AGY CLI 輕量橋接器，利用確定性排程與自然語言推理實現手機端伺服器自主維運。
+8. 部署 HostSpark 主機 AI 代理，利用確定性排程與自然語言推理實現手機端伺服器自主維運。
 
 ---
 
@@ -54,7 +54,7 @@
 | [第 4 章](/guide/04_litellm_api_governance) | Virtual Key、多租戶權限與流量治理 | 為團隊與會議系統發放不同權限、限額、期限及可撤銷的憑證 |
 | [第 5 章](/guide/05_ai_meeting_transcription) | 用 Prompt 協作建立 AI 會議轉錄與紀錄系統 | 完成錄音檔上傳、STT、逐字稿修訂、串流會議紀錄及 GitHub 交付 |
 | [第 6 章](/guide/06_cloudflare_deployment) | Cloudflare Tunnel 與正式部署 | 以 HTTPS 網域持續提供受 Cloudflare Access 保護的會議系統 |
-| [第 7 章](/guide/07_telegram_vm_bridge) | Antigravity CLI (AGY) × Telegram 行動維運與自動排程 | 部署輕量 Telegram 橋接器，結合主機排程實現手機端 AIOps 伺服器監控與維運 |
+| [第 7 章](/guide/07_telegram_vm_bridge) | HostSpark 24/7 主機 AI 代理與行動自主維運 | 部署 HostSpark 核心引擎，結合持久定時任務與 Telegram 實現 AIOps 自主巡檢 |
 
 ### 課程附錄
 
@@ -69,7 +69,7 @@
 │                          學員本機 / 管理員手機                           │
 │   ├── Antigravity Remote SSH (開發預覽: localhost:3000)                │
 │   ├── 外部使用者瀏覽器 (正式發布: meeting.yourdomain.com via Access)     │
-│   └── 管理員 Telegram App (行動維運: /status, /schedule_add)           │
+│   └── 管理員 Telegram App (HostSpark 行動維運: /status, /schedule_add) │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │
                                     ▼
@@ -81,10 +81,10 @@
 │   └── LiteLLM Gateway (:4000) ──(Provider Key)──▶ 國網 RAP API         │
 │          └── PostgreSQL (:5432 持久化)                                 │
 │                                                                        │
-│  【應用模組 B：AIOps 行動維運】                                         │
-│   ├── Telegram Bot Bridge (Python systemd 服務)                        │
-│   ├── SQLite schedules.db (主機級定時排程器)                            │
-│   └── Antigravity CLI (agy 本地子程序 / 系統資源控制)                   │
+│  【應用模組 B：HostSpark AIOps 自主維運】                               │
+│   ├── HostSpark Core Engine (Python systemd 服務)                      │
+│   ├── SQLite schedules.db (HostSpark 持久定時排程器)                    │
+│   └── HostSpark 專屬主機代理 (AGY CLI 本地子程序 / 系統資源控制)          │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -111,5 +111,5 @@
 - 瀏覽器只呼叫會議系統的同源後端，不直接取得 LiteLLM 或上游供應商金鑰。
 - 開發服務透過 Antigravity Ports 預覽，不開放晶創雲的 3000、4000 等連接埠。
 - Cloudflare Tunnel 搭配 Cloudflare Access 保護使用者入口，LiteLLM Virtual Key、模型白名單與限流保護模型服務。
-- Telegram Bridge 強制限定單一數字 `ALLOWED_USER_ID`，並預設以 `safe` 模式運行。
+- HostSpark 強制限定單一數字 `ALLOWED_USER_ID`，並預設以 `safe` 模式運行。
 - 課程結束後停止或刪除不再使用的計費資源，並撤銷臨時金鑰。
