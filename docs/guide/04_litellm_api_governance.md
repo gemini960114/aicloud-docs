@@ -239,9 +239,9 @@ curl -s -o /dev/null -w "HTTP 狀態碼: %{http_code}\n" -X POST "http://127.0.0
 
 | 租戶 / Virtual Key | 允許存取之模型別名 | RPM 限制 | TPM 限制 | 建議有效期 | 主要用途 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `team-a-dev` | `nchc-chat` | 10 | 20,000 | 7 天 | 一般內部團隊對話練習 |
-| `team-b-eval` | `nchc-chat`, `openai-chat` (選配) | 20 | 40,000 | 14 天 | 多模型評測與比較 |
-| `meeting-app-prod` | `meeting-stt`, `meeting-llm` | 30 | 60,000 | 30 天 | **第 5、6 章會議轉錄系統** |
+| `fourbar-app-key` | `tutor-llm` | 30 | 30,000 | 30 天 | **第 5、6 章四連桿模擬器 AI 導師與幾何死點診斷** |
+| `meeting-app-prod` | `meeting-stt`, `meeting-llm` | 30 | 60,000 | 30 天 | **延伸實戰案例：企業級 AI 會議轉錄系統** |
+| `team-dev-eval` | `nchc-chat`, `openai-chat` (選配) | 20 | 40,000 | 14 天 | 多模型評測與內部測試 |
 
 ---
 

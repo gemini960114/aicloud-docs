@@ -198,16 +198,17 @@ docker run --rm hello-world
 在遠端 VM 的家目錄下建立標準化專案目錄：
 
 ```bash
-mkdir -p ~/aicloud-course/{gateway,meeting-app,notes}
+mkdir -p ~/aicloud-course/{gateway,four-bar-simulator,notes}
 cd ~/aicloud-course
 ```
 
 目錄規劃如下：
 ```text
 ~/aicloud-course/
-├── gateway/       # 第 3、4 章：LiteLLM Gateway 與 PostgreSQL 治理配置
-├── meeting-app/   # 第 5、6 章：Next.js AI 會議轉錄系統與 Cloudflare 部署
-└── notes/         # 個人學習筆記與非機密架構紀錄
+├── gateway/             # 第 3、4 章：LiteLLM Gateway 與 PostgreSQL 治理配置
+├── four-bar-simulator/  # 第 5、6 章：四連桿模擬器 (Canvas + AI 導師 + Docker)
+├── notes/               # 個人學習筆記與非機密架構紀錄
+└── (選配) meeting-app/  # 延伸實戰案例：企業級 Next.js AI 會議轉錄系統
 ```
 
 ---

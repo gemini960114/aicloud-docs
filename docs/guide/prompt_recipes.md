@@ -83,59 +83,52 @@
 > 驗收：Lint、型別檢查與 Production Build 成功；正常及失敗路徑通過；模型不捏造未提供的負責人、期限與決議。
 > 請先提出分階段架構、檔案清單、兩條資料流、隱私風險與測試矩陣，不要寫程式碼。
 
-## 7. Recipe：會議紀錄 SSE 串流除錯
+## 7. Recipe：AI 智慧診斷端點與串流除錯
 
-> 現象：[描述實際畫面、HTTP 狀態與何時中斷，不要只寫「不能用」]。
-> 已驗證：[列出 LLM、LiteLLM `meeting-llm`、Next.js `/api/minutes` 各層已完成的測試]。
-> 目標：找出會議紀錄串流在 LLM → LiteLLM → Next.js → Browser 的哪一層失效。
-> 請一次只測相鄰兩層，檢查 HTTP 狀態、Content-Type、首段延遲、資料框架、結束訊號、Buffer 邊界與取消傳播。
-> 禁止事項：不得同時修改前端、後端與 Gateway；不得把關閉驗證、停用 TLS 或公開 Port 當作解法。
+> 現象：[描述前端點擊 AI 診斷後的錯誤訊息、HTTP 狀態或超時現象]。
+> 已驗證：[列出 LiteLLM `tutor-llm`、後端 `/api/diagnose` 與前端卡片已完成的檢查]。
+> 目標：找出 AI 診斷請求在 前端 ➔ 後端代理 ➔ LiteLLM (:4000) ➔ 國網 RAP API 哪一層受阻。
+> 請一次只測相鄰兩層，檢查 HTTP 狀態、Virtual Key 授權標頭、JSON 格式與網路通訊。
+> 禁止事項：不得同時修改前端、後端與 Gateway；不得將 Virtual Key 寫死於前端程式碼中。
 > 輸出：分開列出已驗證事實、推測、下一個最小測試，以及該測試如何證明或排除假設。
 
-## 8. Recipe：Secret 與權限檢查
+## 8. Recipe：Secret 與金鑰權限檢查
 
 > 目標：在不顯示 Secret 值的前提下，檢查專案是否可能洩漏憑證。
-> 請檢查 Git 追蹤檔案、.gitignore、前端 Bundle、NEXT_PUBLIC_*、容器映像建置內容、Compose 設定、應用日誌、錯誤回應與瀏覽器 Network Request。
-> 另確認 TAIWAN AI RAP API入口金鑰只存在 LiteLLM、LiteLLM Master Key 只供管理者使用、Next.js 只持有最小權限 Virtual Key。
+> 請檢查 Git 追蹤檔案、.gitignore、前端 Bundle、容器映像建置內容、Compose 設定、應用日誌與瀏覽器 Network Request。
+> 另確認 TAIWAN AI RAP API入口金鑰只存在 LiteLLM、LiteLLM Master Key 只供管理者使用、四連桿應用後端只持有受限的 Virtual Key（僅限 `tutor-llm`）。
 > 不得執行會列出環境變數值或檔案內容的命令。只回報變數名稱、檔案位置、是否可能曝光與修正建議。發現疑似外洩時立即停下來，先建議撤銷與輪替。
 
-## 9. Recipe：GitHub 版本交付
+## 9. Recipe：四連桿模擬器 Docker 容器化交付
 
-> 背景與現況：會議轉錄系統已通過錄音檔上傳、STT、會議紀錄 SSE、Lint、型別檢查、Production Build 與人工驗收，README 已使用假值說明環境變數。
-> 目標：把可重現的原始碼安全交付到 GitHub；本輪不部署服務。
-> 第一階段只做唯讀檢查：確認 Git 狀態、分支、Remote、.gitignore、差異、未追蹤檔案、大型檔案、Build 產物，以及 .env、金鑰、憑證或日誌的洩漏風險。不得讀取或顯示 Secret 值。
-> 登入限制：未登入時使用 GitHub CLI 官方 Web／Device Flow；到瀏覽器授權步驟立即暫停，由我親自完成。不得要求我提供密碼、Token、Cookie 或裝置碼。
-> 外部變更限制：建立 Repository 前先詢問擁有者、名稱及 Public／Private；已有 Remote 時不得覆寫。Stage 前列出明確檔案，Commit 與 Push 各自等待確認。
-> 禁止事項：不得使用 git add .、Force Push、改寫歷史、刪除分支、猜測 Repository 可見性或提交 Secret。
-> 驗收：GitHub 網頁上的擁有者、可見性、分支、最新 Commit、檔案與 README 均符合預期，且沒有 .env、Secret、日誌或 Build 產物。
-> 請先提出分階段計畫、每一個人工確認點與失敗後的安全處理方式，不要執行。
+> 背景與現況：四連桿模擬器已完成 Canvas 物理引擎、6 大生活預設庫、AI 死點診斷卡片與一鍵修復功能，本機測試無誤。
+> 目標：將專案安全打包為標準 Docker 容器，並在 Port 8090 正常運行。
+> 第一階段只做唯讀檢查：確認 Dockerfile 多階段構建、nginx.conf/server.js 設定、依賴鎖定檔案、未追蹤檔案與環境變數隔離。不得讀取或顯示 Secret 值。
+> 驗收：`docker build` 與 `docker run` 執行成功，本機 `curl -I http://127.0.0.1:8090` 回傳 HTTP 200，且能順利連通後端 AI 診斷端點。
 
-## 10. Recipe：Production 部署審查
+## 10. Recipe：Cloudflare Tunnel 正式發布審查
 
-> 背景與現況：開發版已透過 Antigravity Ports 完成聯調。
-> 目標：將 Next.js 會議轉錄系統、LiteLLM 與 PostgreSQL 以可重現方式部署，並只透過 Cloudflare Access／Tunnel 公開會議系統。
-> 技術限制：Next.js 使用 Production Build 與 Node.js Runtime，不使用開發伺服器或純靜態匯出；容器內以 service name 連線；PostgreSQL 不發布主機 Port。
-> 安全限制：本版本沒有應用程式帳號，Cloudflare Access 是正式入口的必要保護；LiteLLM Admin UI、4000 Port、資料庫與任何 Secret 不可公開；具名 Tunnel 的 Connector Token 由我親自在終端機處理，不得進入 Prompt、Git、截圖或共用 Shell History。
-> 發布順序：先完成 localhost 的錄音檔上傳、STT 與 SSE 驗收，再檢查 cloudflared、建立具名 Tunnel、Access Application 及最小允許政策，最後才建立只指向會議系統的 Published Application Route。
-> 驗收：cloudflared 服務健康、未登入阻擋、登入後可完成上傳至匯出流程、VM 重啟自動恢復、暫存檔清理、日誌遮蔽與回復演練。
-> 先提出部署差異、停機風險、回復計畫與驗收順序，不要執行。
+> 背景與現況：四連桿模擬器容器已於本機 127.0.0.1:8090 穩定運行。
+> 目標：透過 Cloudflare Tunnel 將 Port 8090 安全發布至公網，同時保護主機內部 LiteLLM (:4000) 與資料庫。
+> 技術限制：主機防火牆嚴禁對外開放 8090 或 4000 等入站端口；外部流量一律由 Cloudflare 邊緣轉發。
+> 安全限制：LiteLLM Admin 端點、4000 Port 與國網 API Key 不得對公網公開；Tunnel Token 由我親自在終端機處理，不得進入 Prompt、Git 或共用日誌。
+> 驗收：cloudflared 服務健康（systemd 常駐）、手機可透過 HTTPS 網址流暢操作連桿，且點擊 AI 診斷能正常獲得分析與修復。
 
 ## 11. Recipe：分層故障診斷
 
 > 使用者看到的現象：[錯誤訊息與發生時間]。
 > 最近變更：[版本、設定或部署差異]。
-> 請按 Browser → Cloudflare Access → Tunnel → Next.js → LiteLLM → TAIWAN AI RAP STT／LLM 的順序診斷；先判斷問題屬於檔案上傳／轉錄或會議紀錄串流，再每次只確認相鄰兩層。
-> 優先執行唯讀檢查；任何重啟、設定修改、Rollback 或資料操作前先說明影響並等待確認。
-> 回報格式：時間線、已驗證事實、尚未驗證項目、最可能原因、下一個最小測試、暫時緩解與永久修正。不得輸出 Secret 或完整敏感 Prompt。
+> 請按 瀏覽器/手機 → Cloudflare Tunnel → 四連桿容器 (:8090) → LiteLLM Gateway (:4000) → 國網 RAP API 的順序診斷；先判斷是網路穿透問題還是後端模型調用問題，再每次只確認相鄰兩層。
+> 優先執行唯讀檢查；任何重啟、設定修改或資料操作前先說明影響並等待確認。
+> 回報格式：時間線、已驗證事實、尚未驗證項目、最可能原因、下一個最小測試、暫時緩解與永久修正。不得輸出 Secret 或完整敏感 Token。
 
-## 12. Recipe：HostSpark 主機代理與持久定時排程
+## 12. Recipe：HostSpark 主機代理與行動 DevAIOps
 
-> 背景與現況：我已在 VM 部署 HostSpark 服務，並已於 `.env` 中設定 `ALLOWED_USER_ID` 與 `AGY_PERMISSION_MODE=safe`。
-> 目標：規劃伺服器例行巡檢排程與 HostSpark 互動指令。
-> 技術限制：排程必須符合標準五欄 cron 語法，依據時區（如 Asia/Taipei）執行；例行無異常的巡檢必須使用 `[NO_REPORT]` 靜默回報；涉及系統管理命令時須遵守權限最小化原則。
+> 背景與現況：我已在 VM 部署 HostSpark 服務，並已於 `.env` 中設定 `ALLOWED_USER_IDS` 與 `AGY_PERMISSION_MODE=safe`。
+> 目標：規劃伺服器例行巡檢排程，或透過 Telegram 在手機上下達指令讓主機自動編程與發布新服務。
+> 技術限制：排程必須符合標準五欄 cron 語法，依據時區（如 Asia/Taipei）執行；例行無異常的巡檢必須使用 `[NO_REPORT]` 靜默回報；行動編程時可切換 `/mode accept-edits`。
 > 安全限制：不得將 Telegram Bot Token、API Key 或敏感憑證寫入排程內容中；非授權的 Telegram User ID 一律攔截拒絕。
-> 驗收：使用 `/status` 正確取得主機狀態；使用 `/schedule_add` 透過兩階段確認建立 HostSpark 持久排程；於排程到期時收到格式正確的推播通知。
-> 請先列出預計建立的排程語法、觸發頻率與 Prompt 模板，不要直接修改資料庫。
+> 驗收：使用 `/status` 正確取得主機狀態；使用 `/schedule_add` 建立持久排程；在手機端發送 Prompt 能順利呼叫 AGY 進行主機操作並獲得即時串流回報。
 
 
 ## 13. 送出 Prompt 前的人工檢查
