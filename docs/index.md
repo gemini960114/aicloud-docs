@@ -49,4 +49,9 @@ features:
     details: 在手機 Telegram 上隨身遙控 VM：從伺服器自動巡檢到手機下指令自動編程、啟動容器與公網發布！
     link: /guide/07_telegram_vm_bridge
     linkText: 探索行動維運
+  - icon: 🎙️
+    title: 延伸案例｜AI 會議轉錄系統
+    details: 企業級進階實戰：Next.js 全端、LiteLLM STT 語音轉錄與 SSE 即時串流結構化會議摘要。
+    link: /cases/01_ai_meeting_transcription
+    linkText: 探索進階案例
 ---
