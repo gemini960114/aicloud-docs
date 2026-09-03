@@ -1,6 +1,12 @@
-# 第 5 章：用 Prompt 協作建立 AI 會議轉錄與紀錄系統
+# 案例 1：用 Prompt 協作建立 AI 會議轉錄與紀錄系統
 
-本章帶領學員使用自然語言 Prompt 搭配 Antigravity，以分階段、安全受控的節奏，從零實作一套完整的 **Next.js 全端 AI 會議轉錄與紀錄系統**。
+> [!NOTE]
+> **案例定位**：本篇為「延伸實戰案例」，適合具備全端開發、音訊處理或企業級模型串接需求之學員進階研讀。  
+> 核心展示如何透過 Next.js、LiteLLM 模型閘道（STT / LLM）與 Server-Sent Events (SSE) 打造具備前後端同源安全隔離的企業級會議紀錄系統。
+
+---
+
+本案例帶領學員使用自然語言 Prompt 搭配 Antigravity，以分階段、安全受控的節奏，從零實作一套完整的 **Next.js 全端 AI 會議轉錄與紀錄系統**。
 
 系統包含兩大核心功能：
 1. **語音轉錄（STT）**：上傳錄音檔案，透過後端代理呼叫 LiteLLM 的 `meeting-stt` 模型別名，取得逐字稿並允許使用者於介面人工編輯校對。
@@ -283,7 +289,7 @@ npm run dev -- --port 3000
 
 ---
 
-## 5. 🎯 本章完成檢核清單 (Checklist)
+## 5. 🎯 本案例完成檢核清單 (Checklist)
 
 請確認以下功能均已通過測試：
 
@@ -294,6 +300,3 @@ npm run dev -- --port 3000
 - [ ] **格式規範**：會議紀錄符合結構化規範，未無中生有捏造人名與日期。
 - [ ] **檔案匯出**：可下載 `.md` 與 `.txt` 檔案至個人電腦。
 - [ ] **編譯驗收**：執行 `npm run build` 打包成功，無 TypeScript 與 ESLint 錯誤。
-
-> [!TIP]
-> 下一步：前往 [第 6 章：Cloudflare Tunnel 與正式部署](/guide/06_cloudflare_deployment)，將這套會議系統透過 Cloudflare Zero Trust 安全發布至公網自訂網域！

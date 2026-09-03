@@ -4,7 +4,7 @@ layout: home
 hero:
   name: "晶創雲 AI 應用課程"
   text: "從模型治理、全端開發到行動維運"
-  tagline: "以國網晶創雲為基礎，完整掌握模型閘道治理、AI 會議紀錄系統、零信任安全發布與手機端自主維運"
+  tagline: "以國網晶創雲為基礎，完整掌握模型閘道治理、AI 互動應用開發、零信任安全發布與手機端自主維運"
   actions:
     - theme: brand
       text: 查看課程地圖
@@ -34,19 +34,19 @@ features:
     details: 向不同團隊與會議系統發放獨立 Virtual Key，分別限制 STT／LLM 模型、RPM、TPM、期限與預算。
     link: /guide/04_litellm_api_governance
     linkText: 設計存取治理
-  - icon: 🎙️
-    title: 第 5 章｜AI 會議轉錄與紀錄
-    details: 以分階段 Prompt 建立錄音檔上傳、STT、逐字稿修訂與串流會議紀錄，再安全交付到 GitHub。
-    link: /guide/05_ai_meeting_transcription
-    linkText: 建立會議系統
+  - icon: ⚙️
+    title: 第 5 章｜四連桿模擬器與 AI 開發
+    details: 以 4 輪階梯式 Prompt 打造 React + Canvas 60 FPS 物理模擬器與 6 大生活機械預設庫，並以 Docker 封裝。
+    link: /guide/05_four_bar_linkage_simulator
+    linkText: 探索連桿模擬器
   - icon: 🔒
     title: 第 6 章｜Cloudflare 安全發布
-    details: 將會議系統轉為可持續運作的正式服務，以 Cloudflare Access 保護沒有內建帳號的應用，再透過 Tunnel 發布。
+    details: 免開防火牆端口，透過 Quick Tunnel 與具名 Zero Trust 將四連桿模擬器安全發布至公網，手機即時觸控體驗。
     link: /guide/06_cloudflare_deployment
     linkText: 發布正式服務
   - icon: 🤖
-    title: 第 7 章｜HostSpark 主機 AI 代理
-    details: 部署 HostSpark 主機 AI 代理核心，結合持久定時排程與 Telegram，實現 24 小時伺服器自主巡檢與行動維運。
+    title: 第 7 章｜HostSpark 行動 DevAIOps
+    details: 在手機 Telegram 上隨身遙控 VM：從伺服器自動巡檢到手機下指令自動編程、啟動容器與公網發布！
     link: /guide/07_telegram_vm_bridge
     linkText: 探索行動維運
 ---

@@ -23,10 +23,16 @@ export default defineConfig({
           { text: '🛰️ 第 2 章：Antigravity Remote SSH 與 Ports', link: '/guide/02_ssh_proxyjump_and_dev_env' },
           { text: '🔀 第 3 章：TAIWAN AI RAP 與 LiteLLM Gateway', link: '/guide/03_litellm_gateway' },
           { text: '🛡️ 第 4 章：Virtual Key 與流量治理', link: '/guide/04_litellm_api_governance' },
-          { text: '🎙️ 第 5 章：AI 會議轉錄與紀錄', link: '/guide/05_ai_meeting_transcription' },
+          { text: '⚙️ 第 5 章：四連桿模擬器與 AI 輔助開發', link: '/guide/05_four_bar_linkage_simulator' },
           { text: '🔒 第 6 章：Cloudflare 正式部署', link: '/guide/06_cloudflare_deployment' },
           { text: '🤖 第 7 章：HostSpark 主機 AI 代理', link: '/guide/07_telegram_vm_bridge' },
           { text: '🧩 附錄：AI 協作提示詞模板庫', link: '/guide/prompt_recipes' }
+        ]
+      },
+      {
+        text: '💡 延伸實戰案例庫',
+        items: [
+          { text: '🎙️ 案例 1：AI 會議轉錄與紀錄系統', link: '/cases/01_ai_meeting_transcription' }
         ]
       }
     ],

@@ -1,120 +1,81 @@
 # 第 7 章：HostSpark 24/7 主機 AI 代理與 Telegram 行動自主維運
 
-在前面的章節中，我們學會了如何建立「對外提供服務」的 Web AI 應用（Next.js + LiteLLM + Cloudflare Tunnel）。本章將帶領學員切入另一個極具企業價值的面向——**「對內 AIOps 主機自主維運」**。
+在前面的章節中，我們學會了如何在晶創雲 Linux VM 上以 AI 協作打造**互動式四連桿機械模擬器**（第 5 章），並透過 **Cloudflare Tunnel** 安全發布給手機即時觸控操作（第 6 章）。
 
-我們將在晶創雲 Ubuntu VM 上部署 **HostSpark（主機上的 AI 啟動核心：24/7 Autonomous AI Agent for Linux Hosts）**。透過 HostSpark 代理，管理員能夠在手機端透過 Telegram 隨身操控伺服器上的 HostSpark 專屬主機代理（底層驅動 Antigravity CLI `agy`），進行即時系統巡檢、故障排除，並利用**HostSpark 持久定時任務（Persistent Scheduled Tasks）**實現 24 小時無人值守的自動化巡檢！
+本章將帶領學員切入全課程的終極高峰——**「對內行動 DevAIOps：手機端隨身 AI 工程特工」**。
+
+我們將在晶創雲 Ubuntu VM 上部署開源專案 **HostSpark（24/7 Autonomous AI Agent for Linux Hosts）**。透過 HostSpark 與 Telegram，管理員不僅能在手機上隨身監控伺服器資源與設定持久定時排程，更能在手機上直接以自然語言命令主機**自動編寫代碼、封裝 Docker 容器並拉起 Cloudflare 穿透，在手機上直接存取剛剛由 AI 部署的新服務！**
 
 ---
 
 ## 1. 專案定位與分層架構哲學
 
-### 1.1 為什麼需要 HostSpark？商業 SaaS vs 主機級自主代理
+### 1.1 為什麼需要 HostSpark？手機隨身控制台的威力
 
-在探討具體實作前，我們必須先釐清：市面上已有許多商業 SaaS AI 助理（如 Google Gemini Spark 等），為什麼晶創雲環境需要自主部署 **HostSpark**？
+傳統雲端主機維運必須依賴個人電腦、SSH 客戶端與終端機。當工程師出門在外只有智慧型手機時，一旦遇到需要臨時部署新服務、重啟容器或檢查系統負載，往往束手無策。
 
-| 評比維度 | 🌐 Google Gemini Spark (商用 SaaS) | ⚡ 晶創雲 HostSpark (自主研發) |
-| :--- | :--- | :--- |
-| **產品定位** | 辦公室日常雜事秘書 (Gmail / 日曆 / 文件) | **晶創雲 24/7 主機維運與代碼工程特工** |
-| **控制層級** | 應用程式層 (SaaS) | **作業系統與基礎架構層 (OS / Bash / Docker / systemd)** |
-| **操作介面** | 瀏覽器網頁端 / 專用 App | **手機 Telegram 即時通訊（隨傳隨辦、零學習門檻）** |
-| **定時排程** | 雲端事件觸發 | **主機級 SQLite 持久排程（具備斷電自復與熔斷保護）** |
-| **費用方案** | 入門級 Ultra：每月 NT$3,300 起 | **晶創雲平台專屬（尚未定價／極具自主成本優勢）** |
-| **資料主權** | 資料託管於國外商業公有雲 | **100% 資料不出主機，符合晶創雲安全規範** |
-
-> **核心價值**：HostSpark 的定位不是單純的「文字聊天助理」，而是深入 Linux 作業系統底層的**自主工程代理**。它具備操作 Docker、檢查系統資源、修復設定檔與定時巡檢的真實執行能力，且保證所有伺服器數據 100% 留在晶創雲 VM 內部。
-
----
-
-### 1.2 Unix 哲學：輕量核心代理，而非重複發明輪子
-**HostSpark** 遵循簡潔的 Unix 分工原則，不重複發明笨重的 Agent 框架：
-* **Telegram**：提供手機端隨身通訊介面與安全通道（長輪詢 Long Polling，**主機完全不需要開放對外 Inbound Port**）。
-* **HostSpark Core Engine (Python + SQLite)**：負責單一管理員身分驗證（數字 User ID 白名單）、確定性斜線指令路由、持久排程資料庫、全域並行執行鎖、子程序超時控制與敏感字串脫敏。
-* **Antigravity CLI (`agy`)**：負責大語言模型推理、多輪對話上下文、工具呼叫（Tool Calling）、檔案操作與指令執行。
-* **Ubuntu Linux VM**：提供計算、檔案系統、Docker 容器與 systemd 系統資源。
+**HostSpark** 正是為了解決這個痛點而生：它將 Telegram 轉化為隨身可控的超級終端，背後以 Google Antigravity CLI (`agy`) 作為強大推理引擎，讓主機成為 24 小時在線的專屬工程師。
 
 ```text
 ┌─────────────────────────────────────────────────────────┐
-│                     Telegram Client                     │
-│                (手機 / 電腦端管理員介面)                   │
+│                    Telegram Client                      │
+│        (手機 / 平板 / 電腦端管理員即時通訊介面)             │
 └────────────────────────────┬────────────────────────────┘
-                             │ HTTPS (長輪詢 Long Polling，免開 Inbound Port)
+                             │ HTTPS (長輪詢 Long Polling，免開任何 Inbound Port)
                              ▼
 ┌─────────────────────────────────────────────────────────┐
-│          HostSpark Core Engine (Python + SQLite)        │
-│  ├─ 驗證層 (ALLOWED_USER_ID 白名單過濾)                  │
-│  ├─ 控制層 (斜線指令 / HostSpark 持久排程器 / 執行鎖)    │
-│  └─ 安全層 (Timeout / Output Cap / 敏感字串遮罩)         │
+│         HostSpark Core Engine (Python + SQLite)         │
+│  ├─ 多使用者白名單驗證 (ALLOWED_USER_IDS / Chat ID)       │
+│  ├─ Per-Chat 獨立狀態 (Model / Mode / Effort / Workspace) │
+│  ├─ Live Stream 即時串流進度更新與 Auto-Interrupt 合併   │
+│  ├─ SQLite 持久排程器 (5 欄 Cron、變數模板、3次失敗熔斷)   │
+│  └─ 安全隔離層 (非 Shell 調用、機密過濾、防路徑穿透)        │
 └────────────────────────────┬────────────────────────────┘
-                             │ Local Subprocess (agy -p)
+                             │ Local Subprocess (agy)
                              ▼
 ┌─────────────────────────────────────────────────────────┐
 │              HostSpark 專屬主機代理 (AGY CLI)            │
-│         (模型推理 / 工具呼叫 / 權限審核 / Workspace)      │
+│         (模型推理 / 檔案讀寫 / 工具操作 / 容器管理)        │
 └────────────────────────────┬────────────────────────────┘
                              │ Local Execution
                              ▼
 ┌─────────────────────────────────────────────────────────┐
 │                     Ubuntu Linux VM                     │
-│               (檔案 / Docker / 服務 / 系統資源)          │
+│         (檔案系統 / Docker 容器 / Nginx / 系統資源)      │
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 1.3 核心架構哲學：確定性控制 vs 概率性推理
-在 AI 系統工程中，混淆「控制指令」與「AI 對話」是導致系統不穩定與幻覺（Hallucination）的主因：
-* **確定性控制面（Deterministic Control Plane）**：排程的建立、列表、暫停、恢復、刪除，以及工作階段重置，**必須由 HostSpark 的確定性斜線指令（Slash Commands）與 SQLite 資料庫控制**。
-* **概率性推理面（Probabilistic Reasoning Plane）**：任務的具體目標描述、伺服器巡檢邏輯、故障排查判斷，交由大語言模型（HostSpark 專屬主機代理）以**自然語言**進行彈性推理。
+### 1.2 Unix 分工原則：輕量協同，而非重複發明輪子
+* **Telegram**：提供手機端隨身通訊介面與安全通道（長輪詢 Long Polling，**主機完全不需要開放對外 Inbound Port**）。
+* **HostSpark Core Engine (Python + SQLite)**：負責身分授權驗證、Per-Chat 獨立設定、即時串流反饋、任務佇列、持久排程資料庫、執行鎖與機密脫敏。真正的 AI 推理與工具呼叫交由底層 AGY 負責。
+* **Antigravity CLI (`agy`)**：負責大語言模型推理（支援 Gemini、Claude 等）、上下文管理、工具調用（Tool Calling）、程式碼編輯與指令執行。
+* **晶創雲 Ubuntu Linux VM**：提供計算、儲存、Docker 容器與 systemd 系統資源。
 
 ---
 
-## 2. 🤖 自然語言 Prompt 配方（可直接複製給 AI Agent）
+## 2. ⚙️ 環境設定與安全模型 (`.env`)
 
-在 Antigravity 終端機中，你可以直接複製以下 Prompt 請 AI 協助完成 HostSpark 部署與組態檢查：
-
-### 模式 A：HostSpark 環境自動部署與組態檢查
-
-```markdown
-請協助我在這台晶創雲 Ubuntu VM 上部署 HostSpark 專案：
-
-1. 檢查系統是否已安裝 Python 3.10+、uv 與 agy CLI（執行 agy -p "reply ok" 驗證 CLI 可用）。
-2. 在家目錄下 clone 專案倉庫：git clone https://github.com/gemini960114/HostSpark.git ~/HostSpark。
-3. 協助建立 .env 檔案範本，設定權限為 chmod 600 .env。
-4. 提示我手動填入 TELEGRAM_BOT_TOKEN 與 ALLOWED_USER_ID，切勿要求我將 Token 貼入對話。
-5. 執行 ./install.sh 進行依賴同步與 systemd 服務註冊，並檢查 sudo systemctl status agy-telegram.service。
-```
-
-### 模式 B：安全模式（Safe vs Full）評估與 Sudo 權限管理
-
-```markdown
-請檢查目前 HostSpark 的安全設定模式：
-
-1. 檢查 .env 中的 AGY_PERMISSION_MODE（確認為 safe 或是 full）。
-2. 說明 Safe 模式（工具需人工確認時自動拒絕）與 Full 模式（自動加上 --dangerously-skip-permissions）的風險邊界。
-3. 檢查當前使用者是否擁有免密碼 sudo 權限；若有，請提醒我僅在特定維運期間開啟，維運結束後應立即執行 sudo rm -f /etc/sudoers.d/$USER 還原。
-```
-
-### 模式 C：HostSpark 持久定時任務與靜默回報規劃
-
-```markdown
-請為我的伺服器規劃三個實用的 HostSpark 定時維運排程：
-
-1. 伺服器健康度排程：每 30 分鐘檢查一次 CPU、記憶體與磁碟空間，若使用率未達 85% 則輸出 [NO_REPORT]（靜默不洗版）。
-2. Docker 容器狀態巡檢：每小時檢查一次 Docker 容器是否處於 restart 迴圈或異常停止，若有異常即刻推播。
-3. 產出對應的 /schedule_add cron 指令格式與預期行為說明。
-```
+### 核心安全原則
+1. **多使用者白名單**：透過 `ALLOWED_USER_IDS` 限制只有授權的 Telegram 數字帳號才能操作，其餘訊息一律靜默拒絕。
+2. **非 Shell 安全呼叫**：所有子程序一律透過 `create_subprocess_exec` 呼叫，絕不使用 Shell 拼接字串，免疫注入攻擊。
+3. **機密過濾（Redaction）**：子程序自動過濾 Telegram Token、SSH 私鑰、AWS Key 與 JWT，絕不外流至聊天室或日誌。
+4. **安全模式（Safe vs Full）**：
+   - `safe` 模式（預設）：遵循 AGY 權限規則，工具需危險操作時會受限或提示確認。
+   - `full` 模式：自動加上 `--dangerously-skip-permissions`，工具操作自動核准，適合讓 AI 全自動在主機上編程與建置容器。
 
 ---
 
-## 3. 💻 終端機手動安裝與 systemd 運維 (Step-by-Step)
+## 3. 💻 終端機手動安裝與部署 (Step-by-Step)
 
 ### Step 1：取得 Telegram Bot Token 與個人 User ID
 
 1. **取得 Bot Token**：
    - 在 Telegram 搜尋官方 `@BotFather`。
-   - 傳送 `/newbot`，依提示設定機器人名稱（如 `HostSpark_Bot`）與 username。
-   - BotFather 會回傳專屬的 `HTTP API Token`（格式如 `123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ`）。
+   - 傳送 `/newbot`，依提示命名（例如 `My_HostSpark_Bot`）。
+   - BotFather 會回傳專屬的 `HTTP API Token`（如 `123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ`）。
 2. **取得個人 User ID**：
    - 在 Telegram 搜尋 `@userinfobot` 並點擊 Start。
-   - 記錄回傳的 `Id`（一串純數字，如 `987654321`）。
+   - 記錄回傳的數字 `Id`（例如 `987654321`）。
 
 ---
 
@@ -136,234 +97,169 @@ chmod 600 .env
 nano .env
 ```
 
-在 `.env` 中填入你的必要設定：
+在 `.env` 中填入你的最新設定：
 
 ```dotenv
-# 必要設定
-TELEGRAM_BOT_TOKEN=你的_Telegram_Bot_Token
-ALLOWED_USER_ID=你的數字_User_ID
+# Telegram Bot API Token（必填，從 @BotFather 取得）
+TELEGRAM_BOT_TOKEN=你的_Bot_Token
+
+# 授權操作的 Telegram 數字 User ID（必填，多個以逗號分隔）
+ALLOWED_USER_IDS=你的數字_User_ID
+
+# 權限模式：safe 遵循安全確認；full 自動核准所有工具操作
 AGY_PERMISSION_MODE=safe
 
-# HostSpark 持久定時任務選配設定
+# 僅允許私訊操作（1=是, 0=否，預設 1）
+TELEGRAM_PRIVATE_ONLY=1
+
+# 串流進度顯示模式（compact=精簡單行, full=完整, delete=完成後刪除）
+AGY_PROGRESS_MODE=compact
+
+# 新訊息進入時自動中斷前次任務並合併指示（預設 1）
+AGY_AUTO_INTERRUPT=1
+
+# 定時任務時區
 AGY_SCHEDULE_TIMEZONE=Asia/Taipei
-AGY_SCHEDULE_MIN_INTERVAL_MINUTES=15
-AGY_SCHEDULE_MAX_TASKS=20
-AGY_RULE_PROMPT="只操作指定的專案目錄；修改前先說明；使用繁體中文回覆。"
 ```
 
 ---
 
-### Step 3：執行 HostSpark 一鍵自動化安裝 (`install.sh`)
+### Step 3：執行自動化安裝指令碼 (`install.sh`)
 
 ```bash
-# 給予執行權限並執行安裝
 chmod +x install.sh
 ./install.sh
 ```
 
-`install.sh` 會自動完成以下標準化作業：
-1. 檢查非 root 的一般使用者權限。
-2. 自動使用 `uv` 或標準 `python3 -m venv` 建立獨立虛擬環境。
-3. 依據 `requirements.lock` 安裝鎖定的依賴套件（`python-telegram-bot`, `croniter` 等）。
-4. 執行 `python bot.py --check-config` 進行組態防呆驗證。
-5. 自動產生加固的 `systemd` 服務檔（`/etc/systemd/system/agy-telegram.service`）。
-6. 啟動服務並設定開機自啟動。
-
----
-
-### Step 4：常用 systemd 系統維運指令
+`install.sh` 會自動完成：
+1. 建立獨立 Python 虛擬環境並安裝 `requirements.lock` 鎖定套件。
+2. 執行 `python bot.py --check-config` 進行組態防呆測試。
+3. 建立 systemd 服務檔（`/etc/systemd/system/agy-telegram.service`）。
+4. 啟動服務並設定開機自啟動。
 
 ```bash
 # 檢查 HostSpark 服務狀態 (確認顯示 active (running))
 sudo systemctl status agy-telegram.service --no-pager
 
-# 查看即時動態日誌 (追蹤 Telegram 訊息處理與排程執行)
+# 查看即時動態日誌
 sudo journalctl -u agy-telegram.service -f
-
-# 重新啟動 HostSpark 服務 (修改 .env 後需重啟生效)
-sudo systemctl restart agy-telegram.service
-
-# 停止服務
-sudo systemctl stop agy-telegram.service
 ```
 
 ---
 
-## 4. HostSpark 持久定時任務（Persistent Scheduled Tasks）深度解析
+## 4. 📖 Telegram 指令手冊
 
-### 4.1 為什麼需要主機層級排程？
-若讓大語言模型在單次交談中接收「請每 1 分鐘幫我報天氣」，LLM 可能會在單次 headless CLI 執行中開啟內部無限迴圈，導致 Telegram Bot 的單次對話進程被卡死（Hang）。
+HostSpark 具備豐富的指令系統，分為基礎控制、模型偏好、排程管理與原生 CLI 穿透：
 
-因此 HostSpark 引入 **Host-level Scheduler**，實現完全解耦：
-
-```text
-[Telegram /schedule_add]
-       ↓ (1. 呼叫 HostSpark 代理整理為獨立任務模板)
-[AGY Prompt Refinement (Safe 模式)]
-       ↓ (2. Telegram 彈出 Inline Keyboard 按鈕)
-[管理員點擊確認建立]
-       ↓ (3. 寫入 SQLite schedules.db)
-[背景輪詢 Schedule Loop (每 20 秒)]
-       ↓ (4. 到期時喚醒獨立子程序執行 agy -p)
-[推播結果至 Telegram]
-```
-
----
-
-### 4.2 關鍵排程機制設計
-
-#### A. 兩階段確認機制（Two-Phase Confirmation）
-1. 使用者輸入：`/schedule_add */15 * * * * 檢查磁碟容量若超過80%通知我`
-2. HostSpark 啟動獨立進程要求 AI 重寫為可重複執行的標準 Prompt 模板（此階段強制以 Safe 權限執行）。
-3. HostSpark 在 Telegram 呈現 Inline Keyboard 按鈕：
-   `[ ✅ 確認建立 ]` `[ ❌ 取消 ]`
-4. 唯有經過管理員人工點擊確認，排程才會正式寫入 SQLite。
-
-#### B. 工作目錄隔離（Workspace Isolation）
-* 每個排程分配獨立工作目錄：`~/.local/state/hostspark/workspaces/schedule-<ID>`（或專案設定之 state 路徑）。
-* 執行時透過 `--add-dir` 開放主要專案目錄（`AGY_WORKDIR`）。
-* **優點**：排程執行不會使用一般對話的 `--continue` 階段，**絕不污染**使用者的日常對話歷史。
-
-#### C. 全域並行鎖（Asyncio Concurrency Lock）
-* 排程執行與人工即時對話共用單一 `agy_lock = asyncio.Lock()`。
-* 保證同一時間伺服器上只有一個 AGY 進程在運行，杜絕並行磁碟衝突與資源競爭。
-
-#### D. 執行時動態變數（Runtime Variables）
-在 Prompt 模板中可包含動態時間標籤，觸發時由 Python 自動代入實際數值：
-* `{{now}}`：實際執行時間（ISO 格式）。
-* `{{date}}`：實際執行日期（YYYY-MM-DD）。
-* `{{time}}`：實際執行時間（HH:MM:SS）。
-* `{{timezone}}`：排程時區（例如 `Asia/Taipei`）。
-* `{{scheduled_at}}`：原訂排程觸發時間。
-* `{{run_number}}`：累計執行序號。
-
-#### E. 靜默回報機制（`[NO_REPORT]`）
-對於例行性健康巡檢（例如「正常時不要發訊息」），HostSpark 整理後的 Prompt 會約定：若一切正常無須通知，只輸出精確字串 `[NO_REPORT]`。
-HostSpark 偵測到該值後，會將狀態標記為成功，但**主動抑制 Telegram 訊息傳送**，防止通知洗版。
-
-#### F. 熔斷保護機制（Circuit Breaker）
-* 當某個排程因外部 API 異常或命令錯誤**連續失敗 3 次**：
-  1. 系統自動將該排程標記為暫停（`enabled=0`）。
-  2. 清除下次執行時間。
-  3. 即時主動推播告警訊息至 Telegram，通知管理員排障並以 `/schedule_resume <ID>` 恢復。
-
-#### G. 重啟持久化與防集中補跑
-* 排程資料保存於 SQLite（`schedules.db`）。
-* 若主機停機 1 小時（錯過 4 次執行），重啟後算法會自動跳過歷史過期時間，**最多只補跑一次**，並將下次時間對齊未來。
+| 分類 | 指令 | 說明 |
+|---|---|---|
+| **基礎控制** | `/start` 或 `/help` | 顯示歡迎訊息、當前權限狀態與功能清單 |
+| | `/menu` | 開啟手機常駐快捷功能鍵盤 |
+| | `/status` | 即時檢視 VM 負載、記憶體、磁碟、Docker 與任務佇列 |
+| | `/cancel` | 取消目前正在執行或佇列中的任務 |
+| **工作階段** | `/new` 或 `/clear` | 重置對話階段，下一次提問開啟全新 Session |
+| | `/session` | 檢視當前 Chat 設定明細（Model、Mode、Effort 等） |
+| | `/compact` | 壓縮目前對話上下文，保留核心狀態 |
+| **模型偏好** | `/model [名稱]` | 切換當前模型（如 `gemini-3.7-flash-high`） |
+| | `/effort low\|medium\|high` | 設定推理深度（Reasoning Effort） |
+| | `/mode plan\|accept-edits` | 切換執行模式（`accept-edits` 自動套用代碼變更） |
+| | `/verbose detailed\|compact` | 設定串流進度訊息詳細度 |
+| **配額與工具** | `/usage` / `/quota` | 查詢 AGY 額度與配額重置進度 |
+| | `/context` | 檢視上下文明細與 Token 消耗 |
+| | `/agy [ARGS...]` | 直接執行原生 `agy` CLI 指令（危險操作觸發確認） |
+| **定時排程** | `/schedule_add <cron> <任務>` | 建立定時任務（經 AI 整理並彈出確認按鈕） |
+| | `/schedule_list` | 列出所有已排程的定時任務清單 |
+| | `/schedule_delete <ID>` | 刪除指定定時任務 |
 
 ---
 
-## 5. 指令手冊與核心口訣
+## 5. 🧪 四大實戰演練（Labs）
 
-> 📌 **核心口訣：「斜線指令管排程系統，自然語言寫任務內容」**
-> - **管理排程（查、刪、停、啟）** ➜ 敲 HostSpark 專屬斜線指令（如 `/schedule_list`、`/schedule_delete 1`）。
-> - **排程要執行的工作內容** ➜ 寫自然語言即可（如 `/schedule_add 0 9 * * * 每天早上九點巡檢伺服器`）。
-
-### 完整指令清單速查表
-
-| 指令 | 類型 | 說明 | 範例 |
-|---|---|---|---|
-| `/start` 或 `/help` | 資訊 | 顯示 HostSpark 狀態、目前權限模式（Safe/Full）及完整指令指南 | `/help` |
-| `/status` | 維運 | 即時檢查 VM 運行狀態（Uptime、負載、磁碟剩餘、記憶體與 Docker 容器） | `/status` |
-| `/clear` | 工作階段 | 清除當前 HostSpark 對話上下文，開啟全新獨立的問答階段 | `/clear` |
-| `/schedule_help` | 排程 | 查看定時排程的 cron 語法、時區、可用變數與安全限制 | `/schedule_help` |
-| `/schedule_add` | 排程 | 建立定時任務（先經 AI 整理提示詞並在 Telegram 預覽確認） | `/schedule_add */15 * * * * 檢查伺服器記憶體` |
-| `/schedule_list` | 排程 | 列出目前所有已註冊、已啟用或已暫停的定時任務 | `/schedule_list` |
-| `/schedule_show <ID>`| 排程 | 查看特定排程的完整細節、執行次數統計與 Prompt 模板 | `/schedule_show 1` |
-| `/schedule_pause <ID>`| 排程 | 暫停指定排程（保留設定但暫停定時觸發） | `/schedule_pause 1` |
-| `/schedule_resume <ID>`| 排程 | 恢復暫停的排程，並自動重新計算下一次執行時間 | `/schedule_resume 1` |
-| `/schedule_delete <ID>`| 排程 | 永久刪除指定的定時任務與相關資料 | `/schedule_delete 1` |
-| `一般純文字` | 即時對話 | 直接交給 HostSpark 專屬主機代理進行對話問答或單次指令執行 | `幫我檢查 Nginx 設定檔語法` |
+### 🧪 Lab 1：基礎狀態查詢與對話上下文測試
+1. 在手機 Telegram 對 HostSpark 傳送 `/start` ➜ 確認收到歡迎訊息。
+2. 傳送 `/status` ➜ 確認回報主機 Uptime、負載、磁碟剩餘空間與 Docker 狀態。
+3. 傳送 `/menu` ➜ 喚出手機端快捷鍵盤。
+4. 傳送 `/new` ➜ 開啟全新對話 Session。
 
 ---
 
-## 6. 安全模型與權限治理體系
-
-### 6.1 身分驗證機制
-* 程式啟動時強制檢查 `ALLOWED_USER_ID`。
-* 任何非授權的 Telegram ID 訊息一律拒絕並記錄日誌，杜絕未授權存取時間差。
-
-### 6.2 Safe 模式 vs Full 模式
-
-```text
-┌──────────────────────────────────────────────────────────────┐
-│                    AGY_PERMISSION_MODE                       │
-├──────────────────────────────┬───────────────────────────────┤
-│             safe             │              full             │
-│   (開源專案 / 預設安全模式)   │   (私人專用 VM / 全自動維運)   │
-├──────────────────────────────┼───────────────────────────────┤
-│ • 不帶 --dangerously-... 參數│ • 自動加上 --dangerously-...  │
-│ • 工具呼叫需確認時會被拒絕   │ • 工具操作自動核准無須手動確認 │
-│ • 權限不足時回傳友善提示     │ • 適合無人值守但需承擔風險     │
-└──────────────────────────────┴───────────────────────────────┘
-```
-
-### 6.3 敏感資訊防護與過濾（Redaction）
-* **正則脫敏**：HostSpark 內建過濾機制，自動將輸出中的 Telegram Bot Token、Bearer Token、API Key、密碼遮罩為 `[REDACTED]`。
-* **檔案權限**：`.env` 與 `schedules.db` 強制限制為 `600`（僅服務使用者可讀寫）。
-
-### 6.4 Sudo 權限安全原則
-* **原則**：HostSpark 正常運作（含排程、Docker ps、磁碟查詢）**不需要** root 或 sudo 權限。
-* **臨時維運需求**：若要讓 HostSpark 代理能自動執行 `sudo apt update` 或服務重啟，可手動設定免密碼 sudo，並於**任務完成後立即還原**：
-  ```bash
-  # 啟用免密碼 sudo（僅限專用測試/維運 VM）
-  echo "$USER ALL=(ALL) NOPASSWD:ALL" | sudo tee "/etc/sudoers.d/$USER" && sudo chmod 0440 "/etc/sudoers.d/$USER"
-
-  # 維運完成後立即還原安全狀態
-  sudo rm -f "/etc/sudoers.d/$USER"
-  ```
-
----
-
-## 7. 🧪 三大實戰演練（Labs）
-
-### 🧪 Lab 1：基礎狀態查詢與延續對話測試
-1. 在 Telegram 對 HostSpark 傳送 `/start` ➜ 確認顯示歡迎訊息與模式。
-2. 傳送 `/status` ➜ 確認回報主機 Uptime、負載、磁碟、記憶體與 Docker 狀態。
-3. 傳送 `請記住暗號 ALPHA` ➜ 確認 HostSpark 代理回應記住。
-4. 傳送 `剛才暗號是什麼？` ➜ 確認能延續對話上下文回覆 ALPHA。
-5. 傳送 `/clear` ➜ 重置對話階段。
-
----
-
-### 🧪 Lab 2：建立定時巡檢排程
-1. 傳送：`/schedule_add */15 * * * * 檢查系統負載與記憶體，若有異常則簡要回報`
+### 🧪 Lab 2：建立主機定時巡檢（SQLite 持久排程）
+1. 傳送：`/schedule_add */30 * * * * 檢查伺服器負載與記憶體，若有異常則簡要回報`
 2. 檢視 HostSpark 回傳的 Prompt 預覽，點擊 **[✅ 確認建立]**。
-3. 傳送 `/schedule_list` ➜ 確認 ID #1 狀態為「啟用」，下次執行時間正確。
-4. 到期時 ➜ HostSpark 自動主動推播巡檢報告至 Telegram。
-5. 傳送 `/schedule_delete 1` ➜ 刪除排程，再次 `/schedule_list` 確認已清空。
+3. 傳送 `/schedule_list` ➜ 確認排程已成功登錄至 SQLite，下次執行時間正確。
+4. 測試結束後傳送 `/schedule_delete 1` 移除排程。
 
 ---
 
 ### 🧪 Lab 3：建立靜默異常巡檢（`[NO_REPORT]` 測試）
 1. 傳送：`/schedule_add 0 * * * * 檢查磁碟剩餘空間，若使用率未達 90% 則只輸出 [NO_REPORT]`
 2. 點擊確認建立。
-3. 整點到達時，若磁碟正常，Telegram 不會收到干擾通知；於 `/schedule_show 1` 可見執行次數增加且狀態為 `success`。
+3. 整點到達時，若磁碟正常，Telegram 不會發出干擾通知，達到無人值守之最高境界。
 
 ---
 
-## 8. 故障排除 SOP 與常見問題
+### 🧪 Lab 4（重磅實戰）：手機端一條龍開發 —— 在 Telegram 重現第 5、6 章成果！
+
+> 🌟 **核心情境**：你現在手邊沒有電腦，只有智慧型手機。我們將透過 Telegram 向 HostSpark 下達指令，在晶創雲 VM 上全自動完成**「寫出新四連桿服務 ➔ 打包 Docker ➔ Cloudflare 公網穿透 ➔ 手機點開體驗」**！
+
+#### 步驟 1：切換為自動套用代碼模式
+在 Telegram 傳送：
+```text
+/mode accept-edits
+```
+
+#### 步驟 2：手機下達編程與容器化指令
+在 Telegram 傳送以下 Prompt：
+```text
+請在 ~/aicloud-course/mobile-demo 目錄下建立一個極簡的四連桿機械模擬器前端：
+1. 包含一個 HTML5 Canvas 畫布，用 JavaScript 繪製曲柄與連桿轉動。
+2. 建立 Dockerfile 與 nginx.conf 將其打包。
+3. 建立並啟動 Docker 容器，命名為 mobile-fourbar，綁定在 127.0.0.1:8091:80。
+4. 啟動後用 curl 驗收本機連線，並回報結果給我。
+```
+
+- **觀察手機畫面**：HostSpark 會即時以串流（Live Stream）回報 AGY 正在建立檔案、撰寫 HTML5、編譯 Docker 映像檔與啟動容器的即時進度！
+- 完成後，HostSpark 會在 Telegram 回傳：「Docker 容器已成功在 Port 8091 啟動，HTTP 200 回應正常！」
+
+#### 步驟 3：手機下達公網穿透發布指令
+接著在 Telegram 傳送：
+```text
+請幫我用 cloudflared 建立 Quick Tunnel，把本機 8091 埠號對映至公網，並把終端機產生的 HTTPS 網址傳給我。
+```
+
+- HostSpark 執行 `cloudflared tunnel --url http://localhost:8091` 並擷取終端機輸出。
+- 在 Telegram 中，HostSpark 回覆：
+  > 🚀 **服務已發布成功！**  
+  > 體驗網址：`https://random-words-1234.trycloudflare.com`
+
+#### 步驟 4：手機即刻驗收！
+- **直接點擊 Telegram 訊息中的 HTTPS 連結**。
+- 你的智慧型手機瀏覽器立刻打開了剛剛由你在手機上下達指令、晶創雲 VM 自動生成並容器化發布的四連桿模擬器！
+- **用手指在手機螢幕上滑動旋轉連桿**——從發想到上線，完全不需要碰電腦鍵盤！
+
+---
+
+## 6. 故障排除 SOP 與常見問題
 
 | 現象 / 錯誤 | 原因分析 | 處置方式 |
 |---|---|---|
-| 輸入「停止排程」後 HostSpark 回覆已停止但排程仍在跑 | 純文字輸入被當成一般 AI 對話處理，AI 產生幻覺確認但無法修改底層 DB | 必須使用斜線指令 `/schedule_delete <ID>` 或 `/schedule_pause <ID>` |
-| HostSpark 顯示「思考與執行中」長達數分鐘不回應 | 對話中要求 AI 自行輪詢或耗時命令卡住 | 終端機執行 `ps aux \| grep agy` 找出該子進程並 `kill <PID>` 中止 |
-| 排程收到「排程已自動暫停」通知 | 任務連續失敗 3 次觸發熔斷保護 | 使用 `/schedule_show <ID>` 查看上次錯誤原因，修復後以 `/schedule_resume <ID>` 恢復 |
-| 收到 `Safe 模式權限拒絕` | 任務需要執行受限制的系統工具 | 評估是否真需修改權限；若確認安全可在 `.env` 切換為 `AGY_PERMISSION_MODE=full` |
+| 傳送訊息完全無回應 | 發送者的 Telegram User ID 未在 `ALLOWED_USER_IDS` 白名單中 | 檢查 `@userinfobot` 取得之 ID 是否正確填入 `.env` |
+| 執行編程任務時被拒絕 | 目前處於 `safe` 模式，且部分系統寫入權限受限 | 在 Telegram 傳送 `/mode accept-edits` 或確認目錄讀寫權限 |
+| Quick Tunnel 在背景被中止 | 終端進程結束 | 可請 HostSpark 以 `nohup cloudflared tunnel --url http://localhost:8091 > /tmp/tunnel.log 2>&1 &` 在背景運行 |
+| 排程任務顯示熔斷暫停 | 任務連續失敗 3 次觸發安全熔斷 | 使用 `/schedule_show <ID>` 檢視錯誤日誌，修復後使用 `/schedule_resume <ID>` 恢復 |
 
 ---
 
-## 9. 🎯 本章完成檢核清單 (Checklist)
+## 7. 🎯 全章完成檢核清單 (Checklist)
 
-請確認以下項目均已順利通過：
+請確認以下每一項均已完成驗收：
 
-- [ ] **身分綁定**：已取得 Telegram Bot Token 與數字 User ID，且 `.env` 權限鎖定為 600。
-- [ ] **服務常駐**：HostSpark `agy-telegram.service` 成功啟動並設為開機自啟動（`systemctl is-active` 為 active）。
-- [ ] **指令互動**：成功在 Telegram 執行 `/status` 並取得主機狀態回報。
-- [ ] **上下文管理**：已驗證多輪對話與 `/clear` 重置上下文功能。
-- [ ] **排程兩階段確認**：成功使用 `/schedule_add` 建立 HostSpark 持久定時任務，並透過 Inline Keyboard 點擊確認。
-- [ ] **靜默機制**：已測試 `[NO_REPORT]` 靜默回報機制，確認例行無異常時不洗版。
-- [ ] **熔斷與恢復**：理解連續失敗 3 次自動熔斷保護與 `/schedule_resume` 恢復機制。
+- [ ] **多使用者綁定**：已正確配置 `ALLOWED_USER_IDS`，且 `.env` 權限設定為 600。
+- [ ] **服務常駐運行**：HostSpark systemd 服務處於 `active (running)` 狀態。
+- [ ] **多功能指令操作**：成功在 Telegram 執行 `/status`、`/menu`、`/new` 與 `/session`。
+- [ ] **持久定時排程**：成功透過 `/schedule_add` 建立定時任務，並驗證了確認按鈕與 `[NO_REPORT]` 靜默機制。
+- [ ] **行動端一條龍開發 (Lab 4)**：成功在手機 Telegram 上發送 Prompt，命令主機寫出服務、打包 Docker、拉起 Cloudflare Tunnel，並在手機瀏覽器上點開驗收！
 
 > [!TIP]
-> 恭喜您完成全套課程！至此您不僅掌握了雲端基礎建設、多模型 API 治理、Web 全端 AI 應用開發與正式安全部署，更進一步解鎖了使用 HostSpark 進行 24/7 行動端伺服器自主維運的進階架構能力！
+> **🎉 恭喜您完成晶創雲 AI 應用開發全系列課程！**  
+> 您已經完整走過雲端基礎建設、多模型閘道治理、AI 互動應用開發、零信任安全發布，最終掌握了以 HostSpark 在手機端隨身實現**「行動自主開發與維運（Mobile DevAIOps）」**的頂尖能力！

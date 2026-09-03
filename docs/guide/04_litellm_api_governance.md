@@ -256,4 +256,4 @@ curl -s -o /dev/null -w "HTTP 狀態碼: %{http_code}\n" -X POST "http://127.0.0
 - [ ] **機密保護**：PostgreSQL 密碼與 Master Key 僅保留於伺服器端 `.env`，未提交至 Git。
 
 > [!TIP]
-> 下一步：前往 [第 5 章：AI 會議轉錄與紀錄系統實作](/guide/05_ai_meeting_transcription)，使用剛才產生的專用 Virtual Key 開發全功能的會議轉錄 Web 應用！
+> 下一步：前往 [第 5 章：從生活看機械：互動式四連桿模擬器與 AI 輔助開發](/guide/05_four_bar_linkage_simulator)，學習如何以 4 輪階梯式 Prompt 引導 AI 打造動態 Web 應用與 Docker 封裝！（若想探索企業級語音轉錄與串流摘要實作，亦可前往 [延伸案例 1：AI 會議轉錄與紀錄系統](/cases/01_ai_meeting_transcription)）
