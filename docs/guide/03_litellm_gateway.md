@@ -53,9 +53,9 @@
 
 1. 建立 .env 範本，包含隨機產生的高強度 LITELLM_MASTER_KEY、NCHC_API_BASE 與 NCHC_API_KEY。
 2. 建立 config.yaml：
-   - 建立 nchc-chat 別名（指向國網 Chat 模型）。
-   - 建立 meeting-stt 別名（指向國網 STT 轉錄模型，指定 mode: audio_transcription）。
-   - 建立 meeting-llm 別名（指向國網 LLM 會議摘要模型）。
+   - 建立 tutor-llm 別名（指向國網 Chat 模型，專供第 5 章四連桿模擬器之 AI 導師與幾何診斷使用）。
+   - 建立 nchc-chat 別名（指向國網通用 Chat 模型）。
+   - 建立 meeting-stt 與 meeting-llm 別名（指向國網 STT 轉錄與會議摘要模型，供延伸案例庫使用）。
    - 設定 general_settings 引用環境變數中的 master_key。
 3. 建立 compose.yaml，將 LiteLLM 容器鎖定監聽 127.0.0.1:4000，掛載 config.yaml 與 .env。
 4. 啟動容器並驗證健康檢查端點（http://127.0.0.1:4000/health/readiness）。
@@ -66,11 +66,12 @@
 ```markdown
 請對剛啟動的 LiteLLM Gateway 進行全面驗收測試：
 
-1. 測試 nchc-chat：使用 Master Key 呼叫 http://127.0.0.1:4000/v1/chat/completions，驗證非串流回應。
-2. 測試 meeting-llm 串流：啟用 stream: true，驗證 Server-Sent Events (SSE) 文字流能逐段接收並正常結束。
-3. 測試 meeting-stt：使用一個短音檔發送 POST /v1/audio/transcriptions 進行語音轉錄測試。
-4. 測試異常處理：使用錯誤的 API Key 呼叫，驗證 Gateway 能正確回傳 401 Unauthorized。
-5. 輸出測試摘要報告，確保日誌中不含敏感金鑰。
+1. 測試 tutor-llm：使用 Master Key 呼叫 http://127.0.0.1:4000/v1/chat/completions，發送物理提問驗證回應。
+2. 測試 nchc-chat：驗證通用對話非串流回應。
+3. 測試 meeting-llm 串流：啟用 stream: true，驗證 Server-Sent Events (SSE) 文字流能逐段接收並正常結束。
+4. 測試 meeting-stt：使用一個短音檔發送 POST /v1/audio/transcriptions 進行語音轉錄測試。
+5. 測試異常處理：使用錯誤的 API Key 呼叫，驗證 Gateway 能正確回傳 401 Unauthorized。
+6. 輸出測試摘要報告，確保日誌中不含敏感金鑰。
 ```
 
 ---
@@ -136,14 +137,21 @@ chmod 600 .env
 ```bash
 cat <<'EOF' > config.yaml
 model_list:
-  # 1. 國網主要對話模型別名
+  # 1. 第 5 章四連桿 AI 導師與機構診斷專用別名 (指向國網 Chat 模型)
+  - model_name: tutor-llm
+    litellm_params:
+      model: openai/<填入實際國網 Chat Model ID>
+      api_base: os.environ/NCHC_API_BASE
+      api_key: os.environ/NCHC_API_KEY
+
+  # 2. 國網通用對話模型別名
   - model_name: nchc-chat
     litellm_params:
       model: openai/<填入實際國網 Chat Model ID>
       api_base: os.environ/NCHC_API_BASE
       api_key: os.environ/NCHC_API_KEY
 
-  # 2. 會議轉錄專用 STT 模型別名 (語音轉文字)
+  # 3. 延伸案例庫：會議轉錄專用 STT 模型別名 (語音轉文字)
   - model_name: meeting-stt
     litellm_params:
       model: openai/<填入實際國網 STT Model ID>
@@ -152,7 +160,7 @@ model_list:
     model_info:
       mode: audio_transcription
 
-  # 3. 會議摘要專用 LLM 模型別名 (文字整理)
+  # 4. 延伸案例庫：會議摘要專用 LLM 模型別名 (文字整理)
   - model_name: meeting-llm
     litellm_params:
       model: openai/<填入實際國網 LLM Model ID>
@@ -265,10 +273,10 @@ curl -s -o /dev/null -w "%{http_code}\n" -X POST "http://127.0.0.1:4000/v1/chat/
 
 - [ ] **國網連線**：已從 Lightweight Portal 取得 API入口金鑰，並以 `curl` 直接測試 `GET /models` 成功。
 - [ ] **目錄與金鑰**：已建立 `~/aicloud-course/gateway`，產生隨機 Master Key，且 `.env` 權限鎖定為 600。
-- [ ] **模型別名**：`config.yaml` 已成功映射 `nchc-chat`、`meeting-stt` 與 `meeting-llm`。
+- [ ] **模型別名**：`config.yaml` 已成功映射 `tutor-llm`（四連桿 AI 導師）、`nchc-chat` 以及延伸案例之 `meeting-stt` / `meeting-llm`。
 - [ ] **容器運行**：LiteLLM 容器成功啟動且僅綁定 `127.0.0.1:4000`。
 - [ ] **統一 API 驗證**：已透過 Gateway 成功驗收非串流對話、SSE 串流輸出與 401 錯誤攔截。
 - [ ] **Ports 預覽 (選用)**：若需查看 LiteLLM Swagger 文件或 UI，可透過 Antigravity Ports 預覽 4000。
 
 > [!TIP]
-> 下一步：前往 [第 4 章：LiteLLM API 治理、權限控管與資料庫持久化](/guide/04_litellm_api_governance)，將 SQLite 升級為 PostgreSQL，並為會議系統發放專屬的受控 Virtual Key！
+> 下一步：前往 [第 4 章：LiteLLM API 治理、權限控管與資料庫持久化](/guide/04_litellm_api_governance)，將 SQLite 升級為 PostgreSQL，並為第 5 章四連桿 AI 導師與延伸案例發放專屬的受控 Virtual Key！

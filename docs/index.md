@@ -31,12 +31,12 @@ features:
     linkText: 建立模型 Gateway
   - icon: 🛡️
     title: 第 4 章｜Virtual Key 與流量治理
-    details: 向不同團隊與會議系統發放獨立 Virtual Key，分別限制 STT／LLM 模型、RPM、TPM、期限與預算。
+    details: 向不同團隊發放獨立 Virtual Key，為四連桿 AI 導師與會議系統分別限制模型、RPM、期限與預算。
     link: /guide/04_litellm_api_governance
     linkText: 設計存取治理
   - icon: ⚙️
-    title: 第 5 章｜四連桿模擬器與 AI 開發
-    details: 以 4 輪階梯式 Prompt 打造 React + Canvas 60 FPS 物理模擬器與 6 大生活機械預設庫，並以 Docker 封裝。
+    title: 第 5 章｜四連桿模擬器與 AI 智能賦能
+    details: 以 4 輪階梯式 Prompt 打造 Canvas 物理模擬器，並注入 LiteLLM 幾何死點 AI 診斷與一鍵神修復。
     link: /guide/05_four_bar_linkage_simulator
     linkText: 探索連桿模擬器
   - icon: 🔒

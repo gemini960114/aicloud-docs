@@ -40,14 +40,19 @@ Antigravity Ports 解決的是「學員如何在個人電腦查看遠端 VM 上�
 [Linux VM 主機：cloudflared connector (systemd)]
        │ 本地轉發至 127.0.0.1:8090
        ▼
-[四連桿機械模擬器 Docker 容器 :8090 (Nginx + React)]
-       └── 60 FPS Canvas 運動學解算器、6 大生活機械預設庫
+[四連桿機械模擬器 Docker 容器 :8090]
+       ├── 前端：60 FPS Canvas 物理引擎、生活預設庫與死點警示
+       └── 後端：POST /api/diagnose (持有第 4 章 fourbar-app-key)
+              │ (主機內部通訊，絕不暴露公網)
+              ▼
+[LiteLLM Gateway :4000 (內部隔離)] ──▶ [國網 TAIWAN AI RAP API]
+       └── 提供 tutor-llm 智慧幾何死點診斷與一鍵修復建議
 ```
 
 ### 核心安全原則
 1. **零開放 Inbound 端口**：VM 主機完全不對公網開放端口，有效杜絕惡意 Port 掃描與網路攻擊。
 2. **自動 HTTPS / TLS**：由 Cloudflare 邊緣節點自動配發並續期 SSL 憑證，手機開啟不會跳出安全警告。
-3. **極小暴露面**：只有經過配置的指定服務（Port 8090）能被轉發，其餘內部服務（如第 3/4 章的 LiteLLM Gateway :4000）完全隱蔽於主機內部。
+3. **內部大腦隔離防護**：外部訪客僅能存取四連桿 Web 前端，背後的 LiteLLM Gateway (`:4000`)、PostgreSQL 與國網 API Key 100% 封裝在主機內部，完全對外隱蔽。
 
 ---
 

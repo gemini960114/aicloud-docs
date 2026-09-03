@@ -52,7 +52,7 @@
 | [第 2 章](/guide/02_ssh_proxyjump_and_dev_env) | Antigravity Remote SSH、自然語言維運與 Ports 預覽 | 完成受控更新、Docker、Node.js 與 uv 等必要工具，並安全預覽測試服務 |
 | [第 3 章](/guide/03_litellm_gateway) | TAIWAN AI RAP 與 LiteLLM 多模型 API Gateway | 將國網、OpenAI、Anthropic Claude 等已授權上游統一為模型別名與單一 Endpoint |
 | [第 4 章](/guide/04_litellm_api_governance) | Virtual Key、多租戶權限與流量治理 | 為團隊與應用服務發放不同權限、限額、期限及可撤銷的憑證 |
-| [第 5 章](/guide/05_four_bar_linkage_simulator) | 動手玩機構：互動式四連桿模擬器與 AI 輔助開發 | 透過 4 輪階梯式 Prompt 打造 React+Canvas 60FPS 物理模擬器與 Docker 容器 (Port 8090) |
+| [第 5 章](/guide/05_four_bar_linkage_simulator) | 動手玩機構：互動式四連桿模擬器與 AI 智能賦能 | 4 輪階梯式 Prompt 打造 Canvas 物理模擬器、LiteLLM 死點 AI 診斷與一鍵修復 (Port 8090) |
 | [第 6 章](/guide/06_cloudflare_deployment) | Cloudflare Tunnel 與正式部署 | 免開防火牆端口，透過 Quick Tunnel 與具名 Zero Trust 將四連桿模擬器安全發布至公網與手機 |
 | [第 7 章](/guide/07_telegram_vm_bridge) | HostSpark 24/7 主機 AI 代理與行動 DevAIOps | 部署 HostSpark 核心，在手機 Telegram 上隨身監控伺服器，並以自然語言下指令自動編程、建置 Docker 與發布服務 |
 
@@ -81,7 +81,7 @@
 │                        晶創雲 Linux VM (Ubuntu)                        │
 │                                                                        │
 │  【應用模組 A：Web 與模型服務】                                         │
-│   ├── 四連桿機械模擬器 Docker 容器 (:8090) ──▶ Nginx + React 物理引擎    │
+│   ├── 四連桿機械模擬器 (:8090) ──(fourbar-app-key 呼叫 tutor-llm)──▶    │
 │   └── LiteLLM Gateway (:4000) ──(Provider Key)──▶ 國網 RAP API / AI     │
 │          └── PostgreSQL (:5432 持久化 / 支援延伸企業案例)               │
 │                                                                        │

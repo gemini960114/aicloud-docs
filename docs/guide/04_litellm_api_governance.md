@@ -18,12 +18,12 @@
   ├── 持有 LITELLM_MASTER_KEY
   └── 僅用於發放 Virtual Key、管理資料庫與調整費率政策
 
-[層級 3：應用程式後端 (Next.js)]
-  ├── 持有專用 Virtual Key (如 sk-meeting-prod-xxx)
-  └── 限制僅能存取 meeting-stt 與 meeting-llm 模型，設定 RPM 限額
+[層級 3：各應用程式後端 (多租戶隔離)]
+  ├── 租戶 A：四連桿模擬器後端 (持有 sk-fourbar-xxx，僅限存取 tutor-llm)
+  └── 租戶 B：延伸案例會議系統 (持有 sk-meeting-xxx，僅限存取 meeting-stt / meeting-llm)
 
-[層級 4：終端使用者 / 團隊成員]
-  └── 透過瀏覽器存取會議系統 Web 介面（由 Cloudflare Access 驗證身分，無須持有任何 API Key）
+[層級 4：終端使用者 / 學生 / 團隊成員]
+  └── 透過瀏覽器操作 Web 介面（由 Cloudflare 邊緣防護，無須持有任何 API Key）
 ```
 
 ---
@@ -45,28 +45,29 @@
 3. 重啟 Docker Compose 並檢查資料庫連線日誌，確認 LiteLLM 成功完成 DB Schema Migration。
 ```
 
-### 模式 B：專用受限 Virtual Key 產生與配額發放
+### 模式 B：專用受限 Virtual Key 產生與配額發放（多租戶示範）
 
 ```markdown
-請使用 LiteLLM 管理 API（/key/generate）為 Next.js 會議轉錄系統建立專用 Virtual Key：
+請使用 LiteLLM 管理 API（/key/generate）為第 5 章的「四連桿模擬器 AI 導師模組」建立專用 Virtual Key：
 
 1. 使用環境變數中的 LITELLM_MASTER_KEY 發起 POST 請求至 http://127.0.0.1:4000/key/generate。
 2. 參數設定：
-   - key_alias: "meeting-app-prod"
-   - models: ["meeting-stt", "meeting-llm"]（嚴禁存取其他模型）
-   - max_budget: 100（預算上限）
-   - tpm_limit: 50000 / rpm_limit: 30
+   - key_alias: "fourbar-app-key"
+   - models: ["tutor-llm"]（嚴禁存取其他模型，限制僅能用於機構物理問答與死點診斷）
+   - max_budget: 10（預算上限 10 美元）
+   - rpm_limit: 30（限制每分鐘最多 30 次請求，防止前端刷爆）
    - duration: "30d"（有效期 30 天）
-3. 取得產生的 sk-... 虛擬金鑰，並將其安全寫入會議系統的 .env 檔案中，切勿在終端機輸出明文金鑰。
+3. 取得產生的 sk-... 虛擬金鑰，並提醒我記錄下來，我們將在第 5 章將其寫入四連桿應用的 .env 中。
+4. (選配) 同步示範為延伸案例庫的會議系統建立第二組金鑰（key_alias: "meeting-app-prod", models: ["meeting-stt", "meeting-llm"]）。
 ```
 
 ### 模式 C：金鑰權限與限流負向測試驗收
 
 ```markdown
-請對剛產生的 meeting-app-prod Virtual Key 進行全套負向測試：
+請對剛產生的 fourbar-app-key Virtual Key 進行全套正反向測試：
 
-1. 正向測試：呼叫 meeting-stt 與 meeting-llm，確認能正常回應。
-2. 越權測試：嘗試呼叫未授權的模型別名（如 nchc-chat 或 openai-chat），確認 Gateway 回傳 400/403 錯誤。
+1. 正向測試：呼叫 tutor-llm 詢問「什麼是格拉索夫準則？」，確認能正常取得回應。
+2. 越權測試：嘗試使用此 Key 呼叫未授權的模型別名（如 meeting-stt 或 openai-chat），確認 Gateway 回傳 400/403 被拒絕。
 3. 撤銷測試：示範透過 /key/delete 撤銷金鑰，並驗證立即回傳 401 Unauthorized。
 4. 輸出測試結果矩陣，確保日誌中不含完整敏感 Token。
 ```
@@ -150,32 +151,32 @@ docker compose logs litellm | grep -i "database"
 # 讀取 Master Key
 source .env
 
-# 產生會議系統專用 Virtual Key (僅限 meeting-stt 與 meeting-llm)
+# 產生四連桿模擬器專用 Virtual Key (僅限 tutor-llm)
 curl -s -X POST "http://127.0.0.1:4000/key/generate" \
   -H "Authorization: Bearer ${LITELLM_MASTER_KEY}" \
   -H "Content-Type: application/json" \
   -d '{
-    "key_alias": "meeting-app-prod",
-    "models": ["meeting-stt", "meeting-llm"],
+    "key_alias": "fourbar-app-key",
+    "models": ["tutor-llm"],
     "duration": "30d",
     "rpm_limit": 30,
-    "tpm_limit": 50000,
-    "metadata": {"project": "meeting-transcription", "env": "prod"}
+    "max_budget": 10.0,
+    "metadata": {"project": "fourbar-simulator", "env": "prod"}
   }' | jq .
 ```
 
 *回傳範例：*
 ```json
 {
-  "key": "sk-litellm-123456abcdef...",
-  "key_alias": "meeting-app-prod",
+  "key": "sk-fourbar-123456abcdef...",
+  "key_alias": "fourbar-app-key",
   "expires": "2026-09-30T00:00:00.000Z",
-  "models": ["meeting-stt", "meeting-llm"]
+  "models": ["tutor-llm"]
 }
 ```
 
 > [!IMPORTANT]
-> 請立即將回傳的 `key`（如 `sk-litellm-...`）記錄並保存至會議系統專案的 `.env` 中；該完整 Key 僅在建立當下顯示一次。
+> 請立即將回傳的 `key`（如 `sk-fourbar-...`）妥善複製保存！我們將在 **[第 5 章](/guide/05_four_bar_linkage_simulator)** 將這把金鑰注入四連桿模擬器後端，作為「AI 導師與幾何死點智慧診斷」的專用模型調用憑證。該完整 Key 僅在建立當下顯示一次。
 
 ---
 
@@ -249,8 +250,8 @@ curl -s -o /dev/null -w "HTTP 狀態碼: %{http_code}\n" -X POST "http://127.0.0
 請確認以下項目均已驗證通過：
 
 - [ ] **資料庫持久化**：已成功部署 PostgreSQL 容器，且 LiteLLM 容器重啟後金鑰資料依然存在。
-- [ ] **權限隔離**：已為會議系統發放專用 Virtual Key，並明確限制僅允許 `meeting-stt` 與 `meeting-llm`。
-- [ ] **正向測試通過**：使用 Virtual Key 呼叫 `meeting-llm` 成功取得回應。
+- [ ] **權限隔離**：已成功發放 `fourbar-app-key` 專用 Virtual Key，明確限制僅允許 `tutor-llm`（並驗證多租戶金鑰隔離）。
+- [ ] **正向測試通過**：使用 Virtual Key 呼叫 `tutor-llm` 成功取得機構物理回應。
 - [ ] **負向防禦驗證**：使用 Virtual Key 呼叫未授權模型時確實被 Gateway 攔截並回傳錯誤。
 - [ ] **金鑰撤銷演練**：已掌握透過 `/key/delete` 撤銷金鑰並驗證 401 拒絕之流程。
 - [ ] **機密保護**：PostgreSQL 密碼與 Master Key 僅保留於伺服器端 `.env`，未提交至 Git。
